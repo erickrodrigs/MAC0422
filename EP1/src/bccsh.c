@@ -24,8 +24,15 @@ void read_command(char **command, char **parameters) {
 int main (int argc, char **argv) {
   pid_t childpid;
   char *command, *parameters;
+  char *flag, *oldname, *newname;
+  int executing = 1;
 
-  while (1) {
+  while (executing) {
+    command = NULL;
+    parameters = NULL;
+    flag = NULL;
+    oldname = NULL;
+
     type_prompt();
     read_command(&command, &parameters);
 
@@ -49,9 +56,11 @@ int main (int argc, char **argv) {
       else {
         printf("Deu ruim!\n");
       }
+
+      printf("OLHA O DIRETORIO AQUI: %s\n", parameters);
     }
     else if (strcmp(command, "kill") == 0) {
-      char *flag = strsep(&parameters, " ");
+      flag = strsep(&parameters, " ");
       int signal = flag[1] - '0';
       pid_t pid = atoi(parameters);
       
@@ -63,9 +72,9 @@ int main (int argc, char **argv) {
       }
     }
     else if (strcmp(command, "ln") == 0) {
-      char *flag = strsep(&parameters, " ");
-      char *oldname = strsep(&parameters, " ");
-      char *newname = parameters;
+      flag = strsep(&parameters, " ");
+      oldname = strsep(&parameters, " ");
+      newname = parameters;
       
       if (symlink(oldname, parameters) == 0) {
         printf("Link para %s criado com sucesso!\n", oldname);
@@ -73,6 +82,10 @@ int main (int argc, char **argv) {
       else {
         printf("Deu ruim!\n");
       }
+    }
+    else if (strcmp(command, "exit") == 0) {
+      executing = 0;
+      printf("Bye bye!\n");
     }
     else {
       printf("Comando não suportado!\n");
@@ -91,6 +104,9 @@ int main (int argc, char **argv) {
       waitpid(-1, NULL, 0);
     }
     */
+    if (command != NULL)
+      free(command);
   }
+
   exit(0);
 }
