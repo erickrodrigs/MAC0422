@@ -1,0 +1,11 @@
+# Ignore binary files without extension
+*
+!*.*
+!*/
+!Makefile
+
+# Ignore .o files
+*.o
+
+# Ignore valgrind output
+valgrind-out.txt
