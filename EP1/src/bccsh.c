@@ -33,25 +33,39 @@ void read_command(char **command, char **parameters) {
   *parameters = line;
 }
 
+void execute_bin(char *path, char *parameters) {
+  pid_t child;
+  int i = 1, j, pos = -1;
+  char *args[30];
+
+  args[0] = path;
+
+  for (j = 0; path[j] != '\0' ; j++)
+    if (path[j] == '/')
+      pos = j;
+  pos++;
+  args[0] = &path[pos];
+
+  while (parameters != NULL) {
+    args[i] = strdup(strsep(&parameters, " "));
+    i++;
+  }
+  args[i] = NULL;
+
+  if ((child = fork()) == 0) {
+    execvp(path, args);
+  }
+  else {
+    waitpid(-1, NULL, 0);
+  }
+}
+
 int execute_command(char *command, char *parameters) {
   char *flag, *oldname, *newname;
   int executing = 1;
 
-  if (strcmp(command, "/usr/bin/du") == 0) {
-    if (strcmp(command, "-hs .") == 0) {
-      // invoca aqui, não sei fazer ainda
-    }
-  }
-  else if (strcmp(command, "/usr/bin/traceroute") == 0) {
-    if (strcmp(command, "www.google.com.br") == 0) {
-      // invoca aqui, não sei fazer ainda
-    }
-  }
-  else if (strcmp(command, "./ep1") == 0) {
-    // invoca aqui, não sei fazer ainda
-  }
-  else if (strcmp(command, "mkdir") == 0) {
-    if (mkdir(parameters, 0777) == 0) {
+  if (strcmp(command, "mkdir") == 0) {
+    if (mkdir(parameters, 0755) == 0) {
       printf("Criado diretório %s\n", parameters);
     }
     else {
@@ -98,7 +112,7 @@ int execute_command(char *command, char *parameters) {
     printf("Bye bye!\n");
   }
   else {
-    printf("Comando não suportado!\n");
+    execute_bin(command, parameters);
   }
 
   return executing;
