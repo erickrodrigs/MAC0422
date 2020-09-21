@@ -2,6 +2,7 @@ CC		 = gcc
 CFLAGS = -Wall -g
 LIBS   = -lreadline
 SRC		 = src
+RM     = rm
 #-----------------------
 
 bccsh: bccsh.o
