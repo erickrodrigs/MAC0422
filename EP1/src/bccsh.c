@@ -41,22 +41,27 @@ void execute_bin(char *path, char *parameters) {
   for (j = 0; path[j] != '\0' ; j++)
     if (path[j] == '/')
       pos = j;
-  
-  pos++;
-  args[0] = &path[pos];
 
-  while (parameters != NULL) {
-    args[i] = strsep(&parameters, " ");
-    i++;
-  }
+  if (j != 0) {
+    pos++;
+    args[0] = &path[pos];
 
-  args[i] = NULL;
+    while (parameters != NULL) {
+      args[i] = strsep(&parameters, " ");
+      i++;
+    }
 
-  if ((child = fork()) == 0) {
-    execvp(path, args);
-  }
-  else {
-    waitpid(-1, NULL, 0);
+    args[i] = NULL;
+
+    if ((child = fork()) == 0) {
+      if (execvp(path, args) != 0) {
+        printf("COMANDO INVÁLIDO!!!\n");
+        exit(1);
+      }
+    }
+    else {
+      waitpid(-1, NULL, 0);
+    }
   }
 }
 
