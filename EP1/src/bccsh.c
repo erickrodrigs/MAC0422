@@ -38,18 +38,18 @@ void execute_bin(char *path, char *parameters) {
   int i = 1, j, pos = -1;
   char *args[30];
 
-  args[0] = path;
-
   for (j = 0; path[j] != '\0' ; j++)
     if (path[j] == '/')
       pos = j;
+  
   pos++;
   args[0] = &path[pos];
 
   while (parameters != NULL) {
-    args[i] = strdup(strsep(&parameters, " "));
+    args[i] = strsep(&parameters, " ");
     i++;
   }
+
   args[i] = NULL;
 
   if ((child = fork()) == 0) {
@@ -105,6 +105,14 @@ int execute_command(char *command, char *parameters) {
     }
     else {
       printf("Deu ruim!\n");
+    }
+  }
+  else if (strcmp(command, "cd") == 0) {
+    if (chdir(parameters) == 0) {
+      printf("Deu certo!\n");
+    }
+    else {
+      printf("Diretório inválido!\n");
     }
   }
   else if (strcmp(command, "exit") == 0) {
