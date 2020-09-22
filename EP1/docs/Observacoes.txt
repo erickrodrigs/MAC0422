@@ -1,1 +1,2 @@
 Quando não há argumentos no bccsh, ocorre um segfault.
+./ep1 2 tests/test1.txt qualquer.txt
