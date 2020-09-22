@@ -1,15 +1,16 @@
-CC		 = gcc
-CFLAGS = -Wall -g
-LIBS   = -lreadline
-SRC		 = src
-RM     = rm
+CC		     = gcc
+CFLAGS     = -Wall -g
+READLINE   = -lreadline
+PTHREAD    = -lpthread
+SRC		     = src
+RM         = rm
 #-----------------------
 
 bccsh: bccsh.o ep1
-	$(CC) -o bccsh bccsh.o $(LIBS)
+	$(CC) -o bccsh bccsh.o $(READLINE)
 
 ep1: ep1.o
-	$(CC) -o ep1 ep1.o
+	$(CC) -o ep1 ep1.o $(PTHREAD)
 
 bccsh.o: $(SRC)/bccsh.c
 	$(CC) $(CFLAGS) -c $(SRC)/bccsh.c
