@@ -7,25 +7,25 @@
 
 pthread_t currentThread;
 pthread_mutex_t sem[MAX];
-pthread_mutex_t empty, full;
+pthread_mutex_t empty[MAX];
+pthread_mutex_t full[MAX];
 Schedule schedules[MAX];
 int size;
 time_t start;
 
 void * execute_thread(void * current) {
   int curr = *((int *) current);
-  int i;
+  int i = 0;
 
-  while (1) {
-    printf("AQUIII\n");
+  while (schedules[curr].dt > 0) {
     pthread_mutex_lock(&sem[curr]);
-    pthread_mutex_lock(&empty);
+    pthread_mutex_lock(&empty[curr]);
     sleep(1);
     i = 2 * 2;
     schedules[curr].dt--;
-    printf("DT AGORA VALE %d\n", schedules[curr].dt);
-    pthread_mutex_unlock(&full);
+    printf("DT de %s AGORA VALE %d\n", schedules[curr].name, schedules[curr].dt);
     pthread_mutex_unlock(&sem[curr]);
+    pthread_mutex_unlock(&full[curr]);
   }
   return NULL;
 }
@@ -44,11 +44,11 @@ void srtn() {
   for (i = 0; i < size; i++) {
     pthread_mutex_init(&sem[i], NULL);
     pthread_mutex_lock(&sem[i]);
-  }
 
-  pthread_mutex_init(&empty, NULL);
-  pthread_mutex_init(&full, NULL);
-  pthread_mutex_lock(&full);
+    pthread_mutex_init(&empty[i], NULL);
+    pthread_mutex_init(&full[i], NULL);
+    pthread_mutex_lock(&full[i]);
+  }
 
   for (i = 0; i < size; i++) {
     if (pthread_create(&schedules[i].thread, NULL, execute_thread, (void *) &schedules[i].index)) {
@@ -70,8 +70,7 @@ void srtn() {
       i = j;
 
       if (executing) {
-        printf("LOCK FULL\n");
-        pthread_mutex_lock(&full);
+        pthread_mutex_lock(&full[current]);
 
         if (schedules[current].dt == 0) {
           printf("PROCESSO %s terminou\n", schedules[current].name);
@@ -79,7 +78,6 @@ void srtn() {
           pthread_cancel(schedules[current].thread);
 
           if (size_heap > 0) {
-            int previous = current;
             current = heap[0].index;
             remove_min(heap, &size_heap);
 
@@ -91,7 +89,6 @@ void srtn() {
         }
         else if (size_heap > 0 && heap[0].dt < schedules[current].dt) {
           int previous = current;
-
           current = heap[0].index;
 
           printf("%s VAI SER SUBSTITUÍDO POR %s\n", schedules[previous].name, schedules[current].name);
@@ -102,13 +99,13 @@ void srtn() {
           pthread_mutex_unlock(&sem[current]);
         }
 
-        pthread_mutex_unlock(&empty);
+        pthread_mutex_unlock(&empty[current]);
       }
       else {
         if (size_heap > 0) {
           current = heap[0].index;
           remove_min(heap, &size_heap);
-          printf("%s VAI EXECUTAR...\n", schedules[current].name);
+          printf("%s VAI EXECUTAR E NAO TINHA NADA EXECUTANDO...\n", schedules[current].name);
           pthread_mutex_unlock(&sem[current]);
           executing = 1;
         }
@@ -122,11 +119,11 @@ void srtn() {
   }
 
   for (i = 0; i < size; i++) {
+    pthread_join(schedules[i].thread, NULL);
     pthread_mutex_destroy(&sem[i]);
+    pthread_mutex_destroy(&empty[i]);
+    pthread_mutex_destroy(&full[i]);
   }
-
-  pthread_mutex_destroy(&empty);
-  pthread_mutex_destroy(&full);
 }
 
 void fcfs() {
