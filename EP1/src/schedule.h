@@ -9,6 +9,7 @@ typedef struct schedule {
   char name[30];
   int t0;
   int dt;
+  long int udt;
   int tf;
   int deadline;
   int index;

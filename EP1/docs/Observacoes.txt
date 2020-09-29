@@ -1,2 +1,1 @@
-Quando não há argumentos no bccsh, ocorre um segfault.
-./ep1 2 tests/test1.txt qualquer.txt
+É o index que está sendo utilizado, não o schedules inteiro (round robin)
