@@ -9,3 +9,5 @@
 
 # Ignore valgrind output
 valgrind-out.txt
+
+.vscode

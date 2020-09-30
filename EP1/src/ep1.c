@@ -1,10 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <sys/time.h>
 #include <unistd.h>
 #include <pthread.h>
 #include "heap.h"
 #include "queue.h"
+
+#define RB_EXEC_TIME (long int) 1e6/2
 
 pthread_t currentThread;
 pthread_mutex_t sem[MAX];
@@ -12,9 +15,14 @@ pthread_mutex_t empty[MAX];
 pthread_mutex_t full[MAX];
 Schedule schedules[MAX];
 int size;
-time_t start;
 int scheduler;
 long int execTime;
+
+int greaterEq(suseconds_t ubegin, suseconds_t uend, double begin, double end) {
+  if (begin < end) return 1;
+  
+  return (begin == end && ubegin < uend);
+}
 
 void * execute_thread(void * current) {
   int curr = *((int *) current);
@@ -22,7 +30,7 @@ void * execute_thread(void * current) {
 
   if (scheduler != 1) {
     while (schedules[curr].dt > 0 || schedules[curr].udt > 0) {
-      pthread_mutex_lock(&sem[curr]);
+      //pthread_mutex_lock(&sem[curr]);
       pthread_mutex_lock(&empty[curr]);
       usleep(execTime);
       if (execTime > schedules[curr].udt) {
@@ -34,8 +42,8 @@ void * execute_thread(void * current) {
       }
       i = 2 * 2;
       
-      printf("DT de %s AGORA VALE %d\n", schedules[curr].name, schedules[curr].dt);
-      pthread_mutex_unlock(&sem[curr]);
+      printf("DT de %s AGORA VALE %d e o udt vale %ld \n", schedules[curr].name, schedules[curr].dt, schedules[curr].udt);
+      //pthread_mutex_unlock(&sem[curr]);
       pthread_mutex_unlock(&full[curr]);
     }
   }
@@ -54,17 +62,19 @@ void roundRobin() {
   int i, j;
   int current;
   int executing = 0;
-  int size_queue = 0;
-  long int t = 0;
+  int t = 0;
+  long int ut = 0;
   Queue queue;
+  struct timeval start, actual;
 
   for (i = 0; i < size; i++) {
-    pthread_mutex_init(&sem[i], NULL);
-    pthread_mutex_lock(&sem[i]);
+    //pthread_mutex_init(&sem[i], NULL);
+    
 
     pthread_mutex_init(&empty[i], NULL);
     pthread_mutex_init(&full[i], NULL);
     pthread_mutex_lock(&full[i]);
+    pthread_mutex_lock(&empty[i]);
   }
 
   for (i = 0; i < size; i++) {
@@ -74,30 +84,36 @@ void roundRobin() {
     }
   }
 
-  start = time(NULL);
   i = 0;
   queue_init(&queue);
-
+  execTime = RB_EXEC_TIME;
+  gettimeofday(&start, NULL);
   while (1) {
-    if ((int) difftime(time(NULL), start) == t /*Se for igual nosso próximo quantum*/) {
+    gettimeofday(&actual, NULL);
+    //printf("%d && %d\n", (int)  == t,  >= ut));
+    //printf("%ld\n", (actual.tv_usec - start.tv_usec));
+    //printf("AAAAAAAA\n");
+    if (greaterEq(ut, actual.tv_usec - start.tv_usec, t, difftime(actual.tv_sec, start.tv_sec))) {
       for (j = i; j < size && schedules[j].t0 == t; j++) {
-        //insere na nossa estrutura de dado
+        insert_queue(&queue, schedules[j]);
         printf("%s ENTROU NA FILA\n", schedules[j].name);
       }
+      i = j;
     
       if (executing) {
         pthread_mutex_lock(&full[current]);
 
-        if (schedules[current].dt == 0) {
+        if (schedules[current].dt == 0 && schedules[current].udt == 0) {
           printf("PROCESSO %s terminou\n", schedules[current].name);
           executing = 0;
           pthread_cancel(schedules[current].thread);
-          schedules[i].tf = difftime(time(NULL),start);
+          schedules[i].tf = difftime(time(NULL),start.tv_sec);
 
           if (!is_empty(&queue)) {
             current = remove_queue(&queue).index;
+            executing = 1;
             printf("%s VAI EXECUTAR...\n", schedules[current].name);
-            pthread_mutex_unlock(&sem[current]);
+            //pthread_mutex_unlock(&sem[current]);
           }
         }
         else if (!is_empty(&queue)) {
@@ -108,7 +124,7 @@ void roundRobin() {
           insert_queue(&queue, schedules[previous]);
 
           printf("%s VAI EXECUTAR...\n", schedules[current].name);
-          pthread_mutex_unlock(&sem[current]);
+          //pthread_mutex_unlock(&sem[current]);
         }
 
         pthread_mutex_unlock(&empty[current]);
@@ -117,13 +133,20 @@ void roundRobin() {
         if (!is_empty(&queue)) {
           current = remove_queue(&queue).index;
           printf("%s VAI EXECUTAR E NAO TINHA NADA EXECUTANDO...\n", schedules[current].name);
-          pthread_mutex_unlock(&sem[current]);
+          pthread_mutex_unlock(&empty[current]);
           executing = 1;
         }
-        else if (i == size) break;
+        else if (i == size) 
+          break;
       }
+      if (execTime + ut >= 1e6) {
+        t++;
+        ut += execTime - 1e6;
+      }
+      else ut += execTime;
     }
   }
+  
 }
 
 void srtn() {
@@ -133,14 +156,16 @@ void srtn() {
   int current;
   int executing = 0;
   int t = 0;
+  time_t start;
 
   for (i = 0; i < size; i++) {
-    pthread_mutex_init(&sem[i], NULL);
-    pthread_mutex_lock(&sem[i]);
+    //pthread_mutex_init(&sem[i], NULL);
+    //pthread_mutex_lock(&sem[i]);
 
     pthread_mutex_init(&empty[i], NULL);
     pthread_mutex_init(&full[i], NULL);
     pthread_mutex_lock(&full[i]);
+    pthread_mutex_lock(&empty[i]);
   }
 
   for (i = 0; i < size; i++) {
@@ -177,7 +202,7 @@ void srtn() {
             remove_min(heap, &size_heap);
 
             printf("%s VAI EXECUTAR...\n", schedules[current].name);
-            pthread_mutex_unlock(&sem[current]);
+            //pthread_mutex_unlock(&sem[current]);
 
             executing = 1;
           }
@@ -191,7 +216,7 @@ void srtn() {
           insert(heap, &size_heap, schedules[previous]);
 
           printf("%s VAI EXECUTAR...\n", schedules[current].name);
-          pthread_mutex_unlock(&sem[current]);
+          //pthread_mutex_unlock(&sem[current]);
         }
 
         pthread_mutex_unlock(&empty[current]);
@@ -201,7 +226,7 @@ void srtn() {
           current = heap[0].index;
           remove_min(heap, &size_heap);
           printf("%s VAI EXECUTAR E NAO TINHA NADA EXECUTANDO...\n", schedules[current].name);
-          pthread_mutex_unlock(&sem[current]);
+          pthread_mutex_unlock(&empty[current]);
           executing = 1;
         }
       }
@@ -223,7 +248,7 @@ void srtn() {
 
 void fcfs() {
   int i = 0;
-  start = time(NULL);
+  time_t start = time(NULL);
 
   for (i = 0; i < size; i++) {
     pthread_mutex_init(&sem[i], NULL);
@@ -293,6 +318,7 @@ int main(int argc, char **argv) {
       break;
     case 3:
       roundRobin();
+      break;
     default:
       printf("Escalonador inválido!\n");
       exit(1);
