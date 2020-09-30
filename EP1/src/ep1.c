@@ -17,6 +17,11 @@ Schedule schedules[MAX];
 int size;
 int scheduler;
 long int execTime;
+int show_info;
+
+void processEntering(int processOrder) {
+  fprintf(stderr,"%s entrou no sistema, com t0 = %d, dt = %d, deadline = %d \n", schedules[processOrder].name, schedules[processOrder].t0, schedules[processOrder].dt, schedules[processOrder].deadline);
+}
 
 int greaterEq(suseconds_t ubegin, suseconds_t uend, double begin, double end) {
   if (begin < end) return 1;
@@ -96,7 +101,8 @@ void roundRobin() {
     if (greaterEq(ut, actual.tv_usec - start.tv_usec, t, difftime(actual.tv_sec, start.tv_sec))) {
       for (j = i; j < size && schedules[j].t0 == t; j++) {
         insert_queue(&queue, schedules[j]);
-        printf("%s ENTROU NA FILA\n", schedules[j].name);
+        if (show_info)
+          processEntering(j);
       }
       i = j;
     
@@ -183,7 +189,8 @@ void srtn() {
     if ((int) difftime(time(NULL), start) == t) {
       for (j = i; j < size && schedules[j].t0 == t; j++) {
         insert(heap, &size_heap, schedules[j]);
-        printf("%s ENTROU NO HEAP\n", schedules[j].name);
+        if (show_info)
+          processEntering(j);
       }
 
       i = j;
@@ -247,8 +254,11 @@ void srtn() {
 }
 
 void fcfs() {
-  int i = 0;
-  time_t start = time(NULL);
+  int i;
+  int executing = 0;
+  int t = 0;
+  int curr;
+  time_t start;
 
   for (i = 0; i < size; i++) {
     pthread_mutex_init(&sem[i], NULL);
@@ -262,19 +272,39 @@ void fcfs() {
     }
   }
 
+  curr = -1;
+  i = -1;
+  start = time(NULL);
 
-  for (i = 0; i < size; i++) {
-    while (difftime(time(NULL), start) < schedules[i].t0);
-    printf("%s vai rodar por %d segundos!!\n", schedules[i].name, schedules[i].dt);
-    
-    pthread_mutex_unlock(&sem[i]);
-    pthread_join(schedules[i].thread, NULL);
-
-    schedules[i].tf = difftime(time(NULL),start);
-    printf("tf = %d\n", schedules[i].tf);
+  while (1) {
+    if (difftime(time(NULL), start) == t) {
+      while (schedules[i+1].t0 == t) {
+        i++;
+        if (show_info) processEntering(i);    
+      }
+      t++;
+    }
+    if (executing && schedules[curr].dt == 0) {
+      schedules[curr].tf = difftime(time(NULL),start);
+      executing = 0;
+      if (curr + 1 <= i){
+        curr++;
+        pthread_mutex_unlock(&sem[curr]);
+        executing = 1;
+      }
+    }
+    if (!executing) {
+      if (curr + 1 <= i){
+        curr++;
+        pthread_mutex_unlock(&sem[curr]);
+        executing = 1;
+      }
+    }
+    if (!executing && curr + 1 == size) break;
   }
 
   for (i = 0; i < size; i++) {
+    pthread_join(schedules[i].thread, NULL);
     pthread_mutex_destroy(&sem[i]);
   }
 }
@@ -286,11 +316,15 @@ int main(int argc, char **argv) {
   FILE * output_file;
   int i; 
   size = 0;
+  show_info = 0;
 
-  if (argc != 4) {
+  if (argc < 4 || argc > 5) {
     printf("USO INVÁLIDO!\n");
     exit(1);
   }
+
+  if (argc == 5)
+    show_info = 1;
 
   scheduler = atoi(argv[1]);
   filename = argv[2];
