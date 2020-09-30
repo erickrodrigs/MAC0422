@@ -107,7 +107,7 @@ void roundRobin() {
           printf("PROCESSO %s terminou\n", schedules[current].name);
           executing = 0;
           pthread_cancel(schedules[current].thread);
-          schedules[i].tf = difftime(time(NULL),start.tv_sec);
+          schedules[current].tf = difftime(time(NULL),start.tv_sec);
 
           if (!is_empty(&queue)) {
             current = remove_queue(&queue).index;
@@ -195,7 +195,7 @@ void srtn() {
           printf("PROCESSO %s terminou\n", schedules[current].name);
           executing = 0;
           pthread_cancel(schedules[current].thread);
-          schedules[i].tf = difftime(time(NULL),start);
+          schedules[current].tf = difftime(time(NULL),start);
 
           if (size_heap > 0) {
             current = heap[0].index;
@@ -283,7 +283,8 @@ int main(int argc, char **argv) {
   char * filename;
   char * output_filename;
   FILE * file;
-  FILE * output_file;  
+  FILE * output_file;
+  int i; 
   size = 0;
 
   if (argc != 4) {
@@ -323,7 +324,14 @@ int main(int argc, char **argv) {
       printf("Escalonador inválido!\n");
       exit(1);
       break;
-  } 
+  }
+
+  output_file = fopen(output_filename, "w");
+  
+  for (i = 0; i < size; i++)
+    fprintf(output_file, "%s %d %d\n", schedules[i].name, schedules[i].tf, schedules[i].tf - schedules[i].t0);
+
+  fclose(output_file);
 
   return 0;
 }
