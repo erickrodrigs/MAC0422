@@ -10,26 +10,15 @@
 
 #define RB_EXEC_TIME (long int) 1e6/2
 
-pthread_t currentThread;
-pthread_mutex_t sem[MAX];
-pthread_mutex_t empty[MAX];
-pthread_mutex_t full[MAX];
-Schedule schedules[MAX];
+pthread_mutex_t *sem;
+pthread_mutex_t *empty;
+pthread_mutex_t *full;
+Schedule *schedules;
 int size;
 int scheduler;
 int context_switch;
-long int execTime;
 int show_info;
-
-void processEntering(int processOrder) {
-  fprintf(stderr,"%s entrou no sistema, com t0 = %d, dt = %d, deadline = %d \n", schedules[processOrder].name, schedules[processOrder].t0, schedules[processOrder].dt, schedules[processOrder].deadline);
-}
-
-int greaterEq(suseconds_t ubegin, suseconds_t uend, double begin, double end) {
-  if (begin < end) return 1;
-  
-  return (begin == end && ubegin < uend);
-}
+long int execTime;
 
 void * execute_thread(void * current) {
   int curr = *((int *) current);
@@ -37,7 +26,6 @@ void * execute_thread(void * current) {
   
   if (scheduler != 1) {
     while (schedules[curr].dt > 0 || schedules[curr].udt > 0) {
-      //pthread_mutex_lock(&sem[curr]);
       pthread_mutex_lock(&empty[curr]);
 
       if (show_info)
@@ -51,10 +39,9 @@ void * execute_thread(void * current) {
       else {
         schedules[curr].udt -= execTime;
       }
+
       i = 2 * 2;
-      
-      printf("DT de %s AGORA VALE %d e o udt vale %ld \n", schedules[curr].name, schedules[curr].dt, schedules[curr].udt);
-      //pthread_mutex_unlock(&sem[curr]);
+
       if (show_info)
         fprintf(stderr, "Processo %s vai liberar a CPU %d\n", schedules[curr].name, sched_getcpu());
       
@@ -76,6 +63,64 @@ void * execute_thread(void * current) {
   return NULL;
 }
 
+void initMutex() {
+  int i;
+
+  if (scheduler != 1) {
+    for (i = 0; i < size; i++) {
+      pthread_mutex_init(&empty[i], NULL);
+      pthread_mutex_init(&full[i], NULL);
+      pthread_mutex_lock(&full[i]);
+      pthread_mutex_lock(&empty[i]);
+    }
+  }
+  else {
+    for (i = 0; i < size; i++) {
+      pthread_mutex_init(&sem[i], NULL);
+      pthread_mutex_lock(&sem[i]);
+    }
+  }
+}
+
+void freeMutex() {
+  int i;
+
+  if (scheduler != 1) {
+    for (i = 0; i < size; i++) {
+      pthread_join(schedules[i].thread, NULL);
+      pthread_mutex_destroy(&empty[i]);
+      pthread_mutex_destroy(&full[i]);
+    }
+  }
+  else {
+    for (i = 0; i < size; i++) {
+      pthread_join(schedules[i].thread, NULL);
+      pthread_mutex_destroy(&sem[i]);
+    }
+  }
+}
+
+void initPthreads() {
+  int i;
+
+  for (i = 0; i < size; i++) {
+    if (pthread_create(&schedules[i].thread, NULL, execute_thread, (void *) &schedules[i].index)) {
+      printf("\n ERROR creating thread");
+      exit(1);
+    }
+  }
+}
+
+void processEntering(int processOrder) {
+  fprintf(stderr,"%s entrou no sistema, com t0 = %d, dt = %d, deadline = %d \n", schedules[processOrder].name, schedules[processOrder].t0, schedules[processOrder].dt, schedules[processOrder].deadline);
+}
+
+int greaterEq(suseconds_t ubegin, suseconds_t uend, double begin, double end) {
+  if (begin < end) return 1;
+  
+  return (begin == end && ubegin < uend);
+}
+
 void roundRobin() {
   int i, j;
   int current;
@@ -85,32 +130,17 @@ void roundRobin() {
   Queue queue;
   struct timeval start, actual;
 
-  for (i = 0; i < size; i++) {
-    //pthread_mutex_init(&sem[i], NULL);
-    
-
-    pthread_mutex_init(&empty[i], NULL);
-    pthread_mutex_init(&full[i], NULL);
-    pthread_mutex_lock(&full[i]);
-    pthread_mutex_lock(&empty[i]);
-  }
-
-  for (i = 0; i < size; i++) {
-    if (pthread_create(&schedules[i].thread, NULL, execute_thread, (void *) &schedules[i].index)) {
-      printf("\n ERROR creating thread");
-      exit(1);
-    }
-  }
+  initMutex();
+  initPthreads();
 
   i = 0;
   queue_init(&queue);
   execTime = RB_EXEC_TIME;
   gettimeofday(&start, NULL);
+
   while (1) {
     gettimeofday(&actual, NULL);
-    //printf("%d && %d\n", (int)  == t,  >= ut));
-    //printf("%ld\n", (actual.tv_usec - start.tv_usec));
-    //printf("AAAAAAAA\n");
+
     if (greaterEq(ut, actual.tv_usec - start.tv_usec, t, difftime(actual.tv_sec, start.tv_sec))) {
       for (j = i; j < size && schedules[j].t0 == t; j++) {
         insert_queue(&queue, schedules[j]);
@@ -123,7 +153,6 @@ void roundRobin() {
         pthread_mutex_lock(&full[current]);
 
         if (schedules[current].dt == 0 && schedules[current].udt == 0) {
-          printf("PROCESSO %s terminou\n", schedules[current].name);
           executing = 0;
           pthread_cancel(schedules[current].thread);
           schedules[current].tf = difftime(time(NULL),start.tv_sec);
@@ -133,21 +162,15 @@ void roundRobin() {
             current = remove_queue(&queue).index;
             executing = 1;
             context_switch += 1;
-            printf("%s VAI EXECUTAR...\n", schedules[current].name);
-            //pthread_mutex_unlock(&sem[current]);
           }
         }
         else if (!is_empty(&queue)) {
           int previous = current;
           current = remove_queue(&queue).index;
 
-          printf("%s VAI SER SUBSTITUÍDO POR %s\n", schedules[previous].name, schedules[current].name);
           insert_queue(&queue, schedules[previous]);
 
           context_switch += 1;
-
-          printf("%s VAI EXECUTAR...\n", schedules[current].name);
-          //pthread_mutex_unlock(&sem[current]);
         }
 
         pthread_mutex_unlock(&empty[current]);
@@ -155,7 +178,6 @@ void roundRobin() {
       else {
         if (!is_empty(&queue)) {
           current = remove_queue(&queue).index;
-          printf("%s VAI EXECUTAR E NAO TINHA NADA EXECUTANDO...\n", schedules[current].name);
           pthread_mutex_unlock(&empty[current]);
           executing = 1;
         }
@@ -169,7 +191,8 @@ void roundRobin() {
       else ut += execTime;
     }
   }
-  
+
+  freeMutex();
 }
 
 void srtn() {
@@ -181,22 +204,9 @@ void srtn() {
   int t = 0;
   time_t start;
 
-  for (i = 0; i < size; i++) {
-    //pthread_mutex_init(&sem[i], NULL);
-    //pthread_mutex_lock(&sem[i]);
+  initMutex();
 
-    pthread_mutex_init(&empty[i], NULL);
-    pthread_mutex_init(&full[i], NULL);
-    pthread_mutex_lock(&full[i]);
-    pthread_mutex_lock(&empty[i]);
-  }
-
-  for (i = 0; i < size; i++) {
-    if (pthread_create(&schedules[i].thread, NULL, execute_thread, (void *) &schedules[i].index)) {
-      printf("\n ERROR creating thread");
-      exit(1);
-    }
-  }
+  initPthreads();
 
   start = time(NULL);
   i = 0;
@@ -216,7 +226,6 @@ void srtn() {
         pthread_mutex_lock(&full[current]);
 
         if (schedules[current].dt == 0) {
-          printf("PROCESSO %s terminou\n", schedules[current].name);
           executing = 0;
           pthread_cancel(schedules[current].thread);
           schedules[current].tf = difftime(time(NULL),start);
@@ -228,9 +237,6 @@ void srtn() {
 
             context_switch += 1;
 
-            printf("%s VAI EXECUTAR...\n", schedules[current].name);
-            //pthread_mutex_unlock(&sem[current]);
-
             executing = 1;
           }
         }
@@ -238,14 +244,10 @@ void srtn() {
           int previous = current;
           current = heap[0].index;
 
-          printf("%s VAI SER SUBSTITUÍDO POR %s\n", schedules[previous].name, schedules[current].name);
           remove_min(heap, &size_heap);
           insert(heap, &size_heap, schedules[previous]);
 
           context_switch += 1;
-
-          printf("%s VAI EXECUTAR...\n", schedules[current].name);
-          //pthread_mutex_unlock(&sem[current]);
         }
 
         pthread_mutex_unlock(&empty[current]);
@@ -254,7 +256,6 @@ void srtn() {
         if (size_heap > 0) {
           current = heap[0].index;
           remove_min(heap, &size_heap);
-          printf("%s VAI EXECUTAR E NAO TINHA NADA EXECUTANDO...\n", schedules[current].name);
           pthread_mutex_unlock(&empty[current]);
           executing = 1;
         }
@@ -267,12 +268,7 @@ void srtn() {
       break;
   }
 
-  for (i = 0; i < size; i++) {
-    pthread_join(schedules[i].thread, NULL);
-    pthread_mutex_destroy(&sem[i]);
-    pthread_mutex_destroy(&empty[i]);
-    pthread_mutex_destroy(&full[i]);
-  }
+  freeMutex();
 }
 
 void fcfs() {
@@ -282,17 +278,8 @@ void fcfs() {
   int curr;
   time_t start;
 
-  for (i = 0; i < size; i++) {
-    pthread_mutex_init(&sem[i], NULL);
-    pthread_mutex_lock(&sem[i]);
-  }
-
-  for (i = 0; i < size; i++) {
-    if (pthread_create(&schedules[i].thread, NULL, execute_thread, (void *) &schedules[i].index)) {
-      printf("\n ERROR creating thread");
-      exit(1);
-    }
-  }
+  initMutex();
+  initPthreads();
 
   curr = -1;
   i = -1;
@@ -310,7 +297,7 @@ void fcfs() {
       schedules[curr].tf = difftime(time(NULL),start);
       fprintf(stderr, "SAÍDA: %s %d %d\n", schedules[curr].name, schedules[curr].tf, schedules[curr].tf - schedules[curr].t0);
       executing = 0;
-      if (curr + 1 <= i){
+      if (curr + 1 <= i) {
         curr++;
         context_switch += 1;
         pthread_mutex_unlock(&sem[curr]);
@@ -318,7 +305,7 @@ void fcfs() {
       }
     }
     if (!executing) {
-      if (curr + 1 <= i){
+      if (curr + 1 <= i) {
         curr++;
         pthread_mutex_unlock(&sem[curr]);
         executing = 1;
@@ -327,10 +314,7 @@ void fcfs() {
     if (!executing && curr + 1 == size) break;
   }
 
-  for (i = 0; i < size; i++) {
-    pthread_join(schedules[i].thread, NULL);
-    pthread_mutex_destroy(&sem[i]);
-  }
+  freeMutex();
 }
 
 int main(int argc, char **argv) {
@@ -338,7 +322,8 @@ int main(int argc, char **argv) {
   char * output_filename;
   FILE * file;
   FILE * output_file;
-  int i; 
+  int i;
+  int max = MAX;
   size = 0;
   show_info = 0;
 
@@ -356,6 +341,11 @@ int main(int argc, char **argv) {
 
   file = fopen(filename, "r");
 
+  schedules = malloc(MAX * sizeof(Schedule));
+  sem = malloc(MAX * sizeof(Schedule));
+  empty = malloc(MAX * sizeof(Schedule));
+  full = malloc(MAX * sizeof(Schedule));
+
   while (!feof(file)) {
     if (fscanf(file, "%s %d %d %d", schedules[size].name, &(schedules[size].t0), &(schedules[size].dt), &(schedules[size].deadline)) != 4) {
       continue;
@@ -364,6 +354,31 @@ int main(int argc, char **argv) {
     schedules[size].index = size;
 
     size++;
+    if (size == max) {
+      pthread_mutex_t *aux_sem, *aux_empty, *aux_full;
+      Schedule *aux_schedules;
+
+      max *= 2;
+
+      aux_schedules = malloc(max * sizeof(Schedule));
+      aux_sem = malloc(max * sizeof(pthread_mutex_t));
+      aux_empty = malloc(max * sizeof(pthread_mutex_t));
+      aux_full = malloc(max * sizeof(pthread_mutex_t));
+
+      for (i = 0; i < size; i++) {
+        aux_schedules[i] = schedules[i];
+      }
+
+      free(schedules);
+      free(sem);
+      free(empty);
+      free(full);
+
+      schedules = aux_schedules;
+      sem = aux_sem;
+      empty = aux_empty;
+      full = aux_full;
+    }
   }
 
   fclose(file);
@@ -396,6 +411,8 @@ int main(int argc, char **argv) {
   fprintf(output_file, "%d\n", context_switch);
 
   fclose(output_file);
+
+  free(schedules);
 
   return 0;
 }
