@@ -4,6 +4,7 @@
 #include <sys/time.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <sched.h>
 #include "heap.h"
 #include "queue.h"
 
@@ -16,6 +17,7 @@ pthread_mutex_t full[MAX];
 Schedule schedules[MAX];
 int size;
 int scheduler;
+int context_switch;
 long int execTime;
 int show_info;
 
@@ -32,11 +34,15 @@ int greaterEq(suseconds_t ubegin, suseconds_t uend, double begin, double end) {
 void * execute_thread(void * current) {
   int curr = *((int *) current);
   int i = 0;
-
+  
   if (scheduler != 1) {
     while (schedules[curr].dt > 0 || schedules[curr].udt > 0) {
       //pthread_mutex_lock(&sem[curr]);
       pthread_mutex_lock(&empty[curr]);
+
+      if (show_info)
+        fprintf(stderr, "CPU processo %s: %d\n", schedules[curr].name, sched_getcpu());
+      
       usleep(execTime);
       if (execTime > schedules[curr].udt) {
         schedules[curr].dt--;
@@ -49,16 +55,23 @@ void * execute_thread(void * current) {
       
       printf("DT de %s AGORA VALE %d e o udt vale %ld \n", schedules[curr].name, schedules[curr].dt, schedules[curr].udt);
       //pthread_mutex_unlock(&sem[curr]);
+      if (show_info)
+        fprintf(stderr, "Processo %s vai liberar a CPU %d\n", schedules[curr].name, sched_getcpu());
+      
       pthread_mutex_unlock(&full[curr]);
     }
   }
   else {
     pthread_mutex_lock(&sem[curr]);
+    if (show_info)
+      fprintf(stderr, "CPU processo %s: %d\n", schedules[curr].name, sched_getcpu());
     while (schedules[curr].dt > 0) {
       sleep(1);
       schedules[curr].dt--;
       i = 2 * 2;
     }
+    if (show_info)
+      fprintf(stderr, "Processo %s vai liberar a CPU %d\n", schedules[curr].name, sched_getcpu());
   }
   return NULL;
 }
@@ -114,10 +127,12 @@ void roundRobin() {
           executing = 0;
           pthread_cancel(schedules[current].thread);
           schedules[current].tf = difftime(time(NULL),start.tv_sec);
+          fprintf(stderr, "SAÍDA: %s %d %d\n", schedules[current].name, schedules[current].tf, schedules[current].tf - schedules[current].t0);
 
           if (!is_empty(&queue)) {
             current = remove_queue(&queue).index;
             executing = 1;
+            context_switch += 1;
             printf("%s VAI EXECUTAR...\n", schedules[current].name);
             //pthread_mutex_unlock(&sem[current]);
           }
@@ -128,6 +143,8 @@ void roundRobin() {
 
           printf("%s VAI SER SUBSTITUÍDO POR %s\n", schedules[previous].name, schedules[current].name);
           insert_queue(&queue, schedules[previous]);
+
+          context_switch += 1;
 
           printf("%s VAI EXECUTAR...\n", schedules[current].name);
           //pthread_mutex_unlock(&sem[current]);
@@ -203,10 +220,13 @@ void srtn() {
           executing = 0;
           pthread_cancel(schedules[current].thread);
           schedules[current].tf = difftime(time(NULL),start);
+          fprintf(stderr, "SAÍDA: %s %d %d\n", schedules[current].name, schedules[current].tf, schedules[current].tf - schedules[current].t0);
 
           if (size_heap > 0) {
             current = heap[0].index;
             remove_min(heap, &size_heap);
+
+            context_switch += 1;
 
             printf("%s VAI EXECUTAR...\n", schedules[current].name);
             //pthread_mutex_unlock(&sem[current]);
@@ -221,6 +241,8 @@ void srtn() {
           printf("%s VAI SER SUBSTITUÍDO POR %s\n", schedules[previous].name, schedules[current].name);
           remove_min(heap, &size_heap);
           insert(heap, &size_heap, schedules[previous]);
+
+          context_switch += 1;
 
           printf("%s VAI EXECUTAR...\n", schedules[current].name);
           //pthread_mutex_unlock(&sem[current]);
@@ -286,9 +308,11 @@ void fcfs() {
     }
     if (executing && schedules[curr].dt == 0) {
       schedules[curr].tf = difftime(time(NULL),start);
+      fprintf(stderr, "SAÍDA: %s %d %d\n", schedules[curr].name, schedules[curr].tf, schedules[curr].tf - schedules[curr].t0);
       executing = 0;
       if (curr + 1 <= i){
         curr++;
+        context_switch += 1;
         pthread_mutex_unlock(&sem[curr]);
         executing = 1;
       }
@@ -343,6 +367,8 @@ int main(int argc, char **argv) {
   }
 
   fclose(file);
+
+  context_switch = 0;
  
   switch(scheduler) {
     case 1:
@@ -360,10 +386,14 @@ int main(int argc, char **argv) {
       break;
   }
 
+  fprintf(stderr, "Número de mudanças de contexto %d\n", context_switch);
+
   output_file = fopen(output_filename, "w");
   
   for (i = 0; i < size; i++)
     fprintf(output_file, "%s %d %d\n", schedules[i].name, schedules[i].tf, schedules[i].tf - schedules[i].t0);
+
+  fprintf(output_file, "%d\n", context_switch);
 
   fclose(output_file);
 

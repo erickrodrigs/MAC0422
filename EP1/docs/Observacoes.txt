@@ -1,1 +1,3 @@
 É o index que está sendo utilizado, não o schedules inteiro (round robin)
+Warning sched_getcpu()
+Saída CPU no RR e SRTN: não sabemos ainda se devemos printar toda iteração do while ou só quando o processo acabar
