@@ -11,3 +11,6 @@
 valgrind-out.txt
 
 .vscode
+
+saida*.txt
+output*.txt
