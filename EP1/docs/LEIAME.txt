@@ -1,0 +1,1 @@
+Para compilar o EP, basta executar o comando make no diretório raiz do projeto.

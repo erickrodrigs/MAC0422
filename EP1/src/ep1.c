@@ -10,10 +10,10 @@
 
 #define RB_EXEC_TIME (long int) 1e6/2
 
-pthread_mutex_t sem[MAX];
-pthread_mutex_t empty[MAX];
-pthread_mutex_t full[MAX];
-Schedule schedules[MAX];
+pthread_mutex_t *sem;
+pthread_mutex_t *empty;
+pthread_mutex_t *full;
+Schedule *schedules;
 int size;
 int scheduler;
 int context_switch;
@@ -322,7 +322,8 @@ int main(int argc, char **argv) {
   char * output_filename;
   FILE * file;
   FILE * output_file;
-  int i; 
+  int i;
+  int max = MAX;
   size = 0;
   show_info = 0;
 
@@ -340,6 +341,11 @@ int main(int argc, char **argv) {
 
   file = fopen(filename, "r");
 
+  schedules = malloc(MAX * sizeof(Schedule));
+  sem = malloc(MAX * sizeof(Schedule));
+  empty = malloc(MAX * sizeof(Schedule));
+  full = malloc(MAX * sizeof(Schedule));
+
   while (!feof(file)) {
     if (fscanf(file, "%s %d %d %d", schedules[size].name, &(schedules[size].t0), &(schedules[size].dt), &(schedules[size].deadline)) != 4) {
       continue;
@@ -348,6 +354,31 @@ int main(int argc, char **argv) {
     schedules[size].index = size;
 
     size++;
+    if (size == max) {
+      pthread_mutex_t *aux_sem, *aux_empty, *aux_full;
+      Schedule *aux_schedules;
+
+      max *= 2;
+
+      aux_schedules = malloc(max * sizeof(Schedule));
+      aux_sem = malloc(max * sizeof(pthread_mutex_t));
+      aux_empty = malloc(max * sizeof(pthread_mutex_t));
+      aux_full = malloc(max * sizeof(pthread_mutex_t));
+
+      for (i = 0; i < size; i++) {
+        aux_schedules[i] = schedules[i];
+      }
+
+      free(schedules);
+      free(sem);
+      free(empty);
+      free(full);
+
+      schedules = aux_schedules;
+      sem = aux_sem;
+      empty = aux_empty;
+      full = aux_full;
+    }
   }
 
   fclose(file);
@@ -380,6 +411,8 @@ int main(int argc, char **argv) {
   fprintf(output_file, "%d\n", context_switch);
 
   fclose(output_file);
+
+  free(schedules);
 
   return 0;
 }
