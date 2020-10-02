@@ -156,7 +156,8 @@ void roundRobin() {
           executing = 0;
           pthread_cancel(schedules[current].thread);
           schedules[current].tf = difftime(time(NULL),start.tv_sec);
-          fprintf(stderr, "SAÍDA: %s %d %d\n", schedules[current].name, schedules[current].tf, schedules[current].tf - schedules[current].t0);
+          if (show_info)
+            fprintf(stderr, "SAÍDA: %s %d %d\n", schedules[current].name, schedules[current].tf, schedules[current].tf - schedules[current].t0);
 
           if (!is_empty(&queue)) {
             current = remove_queue(&queue).index;
@@ -229,7 +230,8 @@ void srtn() {
           executing = 0;
           pthread_cancel(schedules[current].thread);
           schedules[current].tf = difftime(time(NULL),start);
-          fprintf(stderr, "SAÍDA: %s %d %d\n", schedules[current].name, schedules[current].tf, schedules[current].tf - schedules[current].t0);
+          if (show_info)
+            fprintf(stderr, "SAÍDA: %s %d %d\n", schedules[current].name, schedules[current].tf, schedules[current].tf - schedules[current].t0);
 
           if (size_heap > 0) {
             current = heap[0].index;
@@ -295,7 +297,8 @@ void fcfs() {
     }
     if (executing && schedules[curr].dt == 0) {
       schedules[curr].tf = difftime(time(NULL),start);
-      fprintf(stderr, "SAÍDA: %s %d %d\n", schedules[curr].name, schedules[curr].tf, schedules[curr].tf - schedules[curr].t0);
+      if (show_info)
+        fprintf(stderr, "SAÍDA: %s %d %d\n", schedules[curr].name, schedules[curr].tf, schedules[curr].tf - schedules[curr].t0);
       executing = 0;
       if (curr + 1 <= i) {
         curr++;
@@ -401,7 +404,8 @@ int main(int argc, char **argv) {
       break;
   }
 
-  fprintf(stderr, "Número de mudanças de contexto %d\n", context_switch);
+  if (show_info)
+    fprintf(stderr, "Número de mudanças de contexto %d\n", context_switch);
 
   output_file = fopen(output_filename, "w");
   

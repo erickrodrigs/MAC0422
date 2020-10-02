@@ -2,7 +2,7 @@
 
 int main(int argc, char **argv) {
   FILE *input_file, *output_file;
-  int t0, dt, tf, tr, deadline;
+  int t0, dt, tf, tr, deadline, context_switch;
   char * name;
   int count = 0;
 
@@ -22,7 +22,9 @@ int main(int argc, char **argv) {
     }
   }
 
-  printf("Quantidade: %d\n", count);
+  fscanf(output_file, "%d", &context_switch);
+  printf("%d\n", context_switch);
+  printf("%d\n\n", count);
   
   fclose(input_file);
   fclose(output_file);
