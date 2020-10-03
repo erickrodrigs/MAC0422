@@ -214,7 +214,7 @@ void srtn() {
   execTime = 1e6;
 
   while (1) {
-    if ((int) difftime(time(NULL), start) == t) {
+    if ((int) difftime(time(NULL), start) >= t) {
       for (j = i; j < size && schedules[j].t0 == t; j++) {
         insert(heap, &size_heap, schedules[j]);
         if (show_info)
@@ -288,7 +288,7 @@ void fcfs() {
   start = time(NULL);
 
   while (1) {
-    if (difftime(time(NULL), start) == t) {
+    if (difftime(time(NULL), start) >= t) {
       while (schedules[i+1].t0 == t) {
         i++;
         if (show_info) processEntering(i);    

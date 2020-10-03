@@ -17,7 +17,7 @@ int main(int argc, char **argv) {
       continue;
 
     if (tf > deadline) {
-      printf("%s terminou depois do deadline! tf = %d | deadline = %d\n", name, tf, deadline);
+      fprintf(stderr, "%s terminou depois do deadline! tf = %d | deadline = %d\n", name, tf, deadline);
       count += 1;
     }
   }
