@@ -17,14 +17,17 @@ int main (int argc, char **argv) {
     }
     averageContext /= 30;
     averageCount /= 30;
-    printf("Para o escalonador %d, a quantidade média de mudanças foi %f e a quantidade média de deadline descumprido foi %f\n", averageContext, averageCount);
+    printf("Para o escalonador %d, a quantidade média de mudanças foi %f e a quantidade média de deadline descumprido foi %f\n", scheduler, averageContext, averageCount);
 
-    for (int i = 0; i < 30; i++) {
-        averageCount += 
+    for (int i = 0; i < 30; i++){
+        varianceCount += (count[i] - averageCount)*(count[i] - averageCount);
 
-        averageContext += 
-        
+        varianceContext += (context_switch[i] - averageContext)*(context_switch[i] - averageContext);
     }
+    varianceContext /= 30;
+    varianceCount /= 30;
 
+    printf("Mudança de contexto: Lado esquerdo: %f lado direito: %f\n", averageContext - 2.04252*sqrt(varianceContext/30), averageContext + 2.04252*sqrt(varianceContext/30));
+    printf("Deadlines ultrapassadas: Lado esquerdo: %f lado direito: %f\n\n", averageCount - 2.04252*sqrt(varianceCount/30), averageCount + 2.04252*sqrt(varianceCount/30));
     return 0;
 }
