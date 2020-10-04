@@ -27,8 +27,8 @@ int main(int argc, char **argv) {
       t0 = t0 + rand() % 3 + 3;
     }
 
-    dt = 1 + rand() % 10;
-    deadline = t0 + dt + rand() % 20;
+    dt = 1 + rand() % 3;
+    deadline = t0 + dt + rand() % 3;
 
     fprintf(output_file, "p%d %d %d %d\n", i, t0, dt, deadline);
   }

@@ -1,1 +1,12 @@
 Para compilar o EP, basta executar o comando make no diretório raiz do projeto.
+
+Esse comando criará dois binários (bccsh e ep1).
+
+Para executar o bccsh, faça ./bccsh
+
+Para executar o ep1, faça ./ep1 <ESCALONADOR> <ARQUIVO_ENTRADA> <ARQUIVO_SAIDA> <FLAG_D> (o último parâmetro é opcional).
+
+Observações: 
+1. O escalonador consome mais CPU que a thread em execução, pois o escalonador não utiliza sleep();
+2. No SRTN e no Round-Robin, caso o programa seja executado com a flag d, o programa mostrará, a cada segundo, em qual CPU o
+processo está rodando, mesmo que o processo continue rodando por mais tempo.
