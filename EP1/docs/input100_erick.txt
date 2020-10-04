@@ -1,0 +1,12 @@
+Para o escalonador 1, a quantidade média de mudanças foi 94.966667 e a quantidade média de deadline descumprido foi 92.000000
+Mudança de contexto: Lado esquerdo: 94.899727 lado direito: 95.033606
+Deadlines ultrapassadas: Lado esquerdo: 92.000000 lado direito: 92.000000
+
+Para o escalonador 2, a quantidade média de mudanças foi 97.000000 e a quantidade média de deadline descumprido foi 56.000000
+Mudança de contexto: Lado esquerdo: 97.000000 lado direito: 97.000000
+Deadlines ultrapassadas: Lado esquerdo: 56.000000 lado direito: 56.000000
+
+Para o escalonador 3, a quantidade média de mudanças foi 402.000000 e a quantidade média de deadline descumprido foi 94.500000
+Mudança de contexto: Lado esquerdo: 402.000000 lado direito: 402.000000
+Deadlines ultrapassadas: Lado esquerdo: 94.313544 lado direito: 94.686456
+

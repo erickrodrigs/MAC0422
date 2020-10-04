@@ -6,14 +6,10 @@ cd ..
 make
 cd tests
 
-a=1
-b=2
-c=3
-
-for CASES in 1 2 3
+for CASES in 200
 do
     echo CASE $CASE
-    ./input_generator input$CASES.txt $CASES
+    #./input_generator input$CASES.txt $CASES
     cd ..
     for SCHEDULER in 1 2 3
     do
@@ -21,7 +17,7 @@ do
         for SAMPLE in $(seq 1 30)
         do
             echo SAMPLE $SAMPLE
-            ./ep1 $SCHEDULER tests/input$CASES.txt output$CASES.txt
+            ./ep1 $SCHEDULER tests/input$CASES.txt output$CASES.txt -d
             cd tests
             ./tester input$CASES.txt ../output$CASES.txt >> result.txt
             cd ..
@@ -33,8 +29,10 @@ do
         cd ..
     done
     cd tests
-    rm input$CASES.txt
+    #rm input$CASES.txt
     cd ..
     rm output$CASES.txt
     cd tests
 done
+
+shutdown 0
