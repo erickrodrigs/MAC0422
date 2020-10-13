@@ -1,0 +1,2 @@
+d é em metros
+30km/h = 1m/120ms , 60km/h = 2m/120ms, 90km/h = 3m=ms
