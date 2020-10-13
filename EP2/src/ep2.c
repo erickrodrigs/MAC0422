@@ -20,7 +20,7 @@ void printTrack() {
   
   for (i = 0; i < 10; i++) {
     for (j = 0; j < d; j++) {
-      printf("%2d|", track[i][j]);
+      printf("%3d|", track[i][j]);
     }
     printf("\n");
   }
