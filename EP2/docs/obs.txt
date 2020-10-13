@@ -1,4 +1,4 @@
 d é em metros
-30km/h = 1m/120ms , 60km/h = 2m/120ms, 90km/h = 3m=ms
+30km/h = 1m/120ms , 60km/h = 2m/120ms, 90km/h = 3m=120ms
 249 < d
 5 < n <= 5*d

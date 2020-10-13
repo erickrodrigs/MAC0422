@@ -6,12 +6,23 @@
 
 #define MAX 400
 
+typedef struct cyclist {
+  int columnPosition;
+  int linePosition;
+  int velocity;
+} Cyclist;
+
+
 int d, n;
 int *track[10];
 
+Cyclist *cyclists;
+
 void * thread(void * id) {
   int cyclist = *((int *) id);
-  
+  while (1) {
+    usleep(20000);
+  } 
   return NULL;
 }
 
@@ -43,16 +54,18 @@ int main(int argc, char ** argv) {
       track[i][j] = 0;
   }
   
-  for (i = 0; i < n; i++) {
-    id[i] = i; 
-    pthread_create(&threads[i], NULL, thread, &id[i]);
-  }
+  
+
+  cyclists = malloc((n+1)*sizeof(Cyclist));
 
   if (n%5 != 0) {
     remainingCyclists = n%5;
     i = 0;
     while (remainingCyclists != 0) {
         track[i][column] = actualCyclist;
+        cyclists[actualCyclist].columnPosition = column;
+        cyclists[actualCyclist].linePosition = i;
+        cyclists[actualCyclist].velocity = 1;
         i += 2;
         remainingCyclists--;
         actualCyclist++;
@@ -69,14 +82,24 @@ int main(int argc, char ** argv) {
     }
     else {
       track[i][column] = actualCyclist;
+      cyclists[actualCyclist].columnPosition = column;
+      cyclists[actualCyclist].linePosition = i;
+      cyclists[actualCyclist].velocity = 1;
       i += 2;
       remainingCyclists--;
       actualCyclist++;
     }
   }
 
+
+  for (i = 0; i < n; i++) {
+    id[i] = i; 
+    pthread_create(&threads[i], NULL, thread, &id[i]);
+  }
+
   printTrack();
 
+  free(cyclists);
   free(threads);
   free(id);
 
