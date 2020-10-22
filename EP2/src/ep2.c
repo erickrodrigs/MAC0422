@@ -46,33 +46,50 @@ int randomVelocity(int previousVelocity) {
 }
 
 void changePosition(int cyclist) {
-  int changedPosition = 0;
+  int line, column, changed;
+  line = cyclists[cyclist].linePosition;
+  column = cyclists[cyclist].columnPosition;
 
-  pthread_mutex_lock(&sem[cyclists[cyclist].linePosition][(cyclists[cyclist].columnPosition + 1) % d]);
+  pthread_mutex_lock(&sem[line][column]);
 
-  if (track[cyclists[cyclist].linePosition][(cyclists[cyclist].columnPosition + 1) % d] == 0) {
-    track[cyclists[cyclist].linePosition][cyclists[cyclist].columnPosition % d] = 0;
-    track[cyclists[cyclist].linePosition][(cyclists[cyclist].columnPosition + 1) % d] = cyclist + 1;
-    
-    cyclists[cyclist].columnPosition = (cyclists[cyclist].columnPosition + 1) % d;
-    changedPosition = 1;
+  pthread_mutex_lock(&sem[line][(column + 1) % d]);
+  if (track[line][(column + 1) % d] == 0) {
+    cyclists[cyclist].columnPosition = (column + 1)% d;
+    track[line][(column + 1)% d] = cyclist + 1;
+    changed = 1;
+    pthread_mutex_unlock(&sem[line][(column + 1) % d]);
   }
+  else {
+    pthread_mutex_unlock(&sem[line][(column + 1) % d]);
 
-  if (changedPosition) {
-    if (cyclists[cyclist].columnPosition == 0) {
-      // volta nova, muda velocidade
-      cyclists[cyclist].velocity = randomVelocity(cyclists[cyclist].velocity);
+    for (int i = line + 1; i < 10 && !changed; i++) {
+      pthread_mutex_lock(&sem[i][column]);
+      pthread_mutex_lock(&sem[i][(column + 1) % d]);
+
+      if (track[i][column] == 0 && track[i][(column + 1)% d] == 0) {
+        cyclists[cyclist].linePosition = i;
+        cyclists[cyclist].columnPosition = (column + 1)% d;
+        track[i][(column + 1)% d] = cyclist + 1;
+        changed = 1;
+      }
+
+      pthread_mutex_unlock(&sem[i][(column + 1) % d]);
+      pthread_mutex_unlock(&sem[i][column]);
     }
-    
-    pthread_mutex_unlock(&sem[cyclists[cyclist].linePosition][(cyclists[cyclist].columnPosition) % d]);
-  } else {
-    pthread_mutex_unlock(&sem[cyclists[cyclist].linePosition][(cyclists[cyclist].columnPosition + 1) % d]);
   }
+
+  if (changed) {
+    if ((column + 1) % d == 0)
+      cyclists[cyclist].velocity = randomVelocity(cyclists[cyclist].velocity);
+    track[line][column] = 0;
+  }
+
+  pthread_mutex_unlock(&sem[line][column]);
 }
 
 void * thread(void * id) {
   int cyclist = *((int *) id);
-  int count = 5;
+  int count = 20;
   int timeRemaining = 0;
 
   while (count != 0) {
