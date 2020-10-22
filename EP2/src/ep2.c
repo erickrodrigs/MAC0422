@@ -15,7 +15,7 @@ typedef struct cyclist {
 
 
 int d, n;
-_Atomic int *track[10];
+int *track[10];
 Cyclist *cyclists;
 
 pthread_mutex_t *sem[10];
@@ -72,33 +72,29 @@ void changePosition(int cyclist) {
 
 void * thread(void * id) {
   int cyclist = *((int *) id);
-  int count = 20;
+  int count = 5;
+  int timeRemaining = 0;
 
-  // teste simples de mudança de posições na pista
   while (count != 0) {
-    // tentativa meio meh de fazer as velocidades (nao testado perfeitamente)
     switch (cyclists[cyclist].velocity) {
-      case 1:
-        usleep(12000);
-        changePosition(cyclist);
-        break;
-      case 2:
-        usleep(6000);
-        changePosition(cyclist);
-        if (cyclists[cyclist].velocity == 2)
-          usleep(6000);
-        else
-          usleep(12000);
-        changePosition(cyclist);
-        break;
-      default:
-        break;
+    case 1:
+      timeRemaining = 2;
+      break;
+    case 2:
+      timeRemaining = 1;
+      break;
+    default:
+      break;
     }
-    // usleep(20000);
-    // changePosition(cyclist);
 
-    pthread_barrier_wait(&barrier);
-    count -= 1;
+    while (timeRemaining != 0) {
+      usleep(60000);
+      pthread_barrier_wait(&barrier);
+      timeRemaining--;
+    }
+
+    changePosition(cyclist);
+    count--;
   }
 
   return NULL;
