@@ -16,3 +16,5 @@ Eliminação dos ciclistas:
   Então, como mudar o count do barrier para que não ocorra deadlock?
   - será que vale a pena criar nossa própria implementação de barreira?
   - thread coordenadora seria uma opção viável?
+
+Como estamos usando barreira de sincronização, apenas uma thread precisa dar usleep
