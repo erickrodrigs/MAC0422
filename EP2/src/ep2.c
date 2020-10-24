@@ -13,6 +13,7 @@ typedef struct cyclist {
   int linePosition;
   int velocity;
   int laps;
+  int broken;
 } Cyclist;
 
 
@@ -20,7 +21,7 @@ int d, n;
 int *track[10];
 Cyclist *cyclists;
 
-pthread_mutex_t *sem[10];
+pthread_mutex_t *sem[10], *availableCyclists;
 pthread_barrier_t barrier;
 
 void printRank(int *vector, int b) {
@@ -161,7 +162,7 @@ void * thread(void * id) {
 
   //pthread_barrier_wait(&barrier);
 
-  while (count != 0) {
+  while (1) {
     switch (cyclists[cyclist].velocity) {
       case 1:
         timeRemaining = 2;
@@ -180,7 +181,7 @@ void * thread(void * id) {
         changePosition(cyclist);
       pthread_barrier_wait(&barrier);
       //processamento do juiz
-      pthread_barrier_wait(&barrier);
+      pthread_mutex_lock(&availableCyclists[cyclist]);
     }
 
     
@@ -203,7 +204,7 @@ void printTrack() {
 
 int main(int argc, char ** argv) {
   int i, *id, column = 0, remainingCyclists, currentCyclist, j;
-  int debug = 1;
+  int debug = 1, previousLap = 0, begin;
   int *sortedCyclists;
   d = atoi(argv[1]);
   n = atoi(argv[2]);
@@ -211,6 +212,12 @@ int main(int argc, char ** argv) {
   currentCyclist = n;
 
   pthread_t *threads = malloc(n*sizeof(pthread_t));
+  availableCyclists = malloc(n*sizeof(pthread_mutex_t));
+
+  for (i = 0; i < n; i++) {
+    pthread_mutex_init(&availableCyclists[i], NULL);
+    pthread_mutex_lock(&availableCyclists[i]);
+  }
 
   id = malloc(n*sizeof(int));
 
@@ -233,6 +240,7 @@ int main(int argc, char ** argv) {
       cyclists[currentCyclist - 1].linePosition = i;
       cyclists[currentCyclist - 1].velocity = 1;
       cyclists[currentCyclist - 1].laps = 0;
+      cyclists[currentCyclist - 1].broken = 0;
       cyclists[currentCyclist - 1].id = currentCyclist;
       //sortedCyclists[currentCyclist - 1] = cyclists[currentCyclist - 1];
       i += 1;
@@ -255,6 +263,7 @@ int main(int argc, char ** argv) {
       cyclists[currentCyclist - 1].linePosition = i;
       cyclists[currentCyclist - 1].velocity = 1;
       cyclists[currentCyclist - 1].laps = 0;
+      cyclists[currentCyclist - 1].broken = 0;
       cyclists[currentCyclist - 1].id = currentCyclist;
       //sortedCyclists[currentCyclist - 1] = cyclists[currentCyclist - 1];
       i += 1;
@@ -289,14 +298,38 @@ int main(int argc, char ** argv) {
 
   remainingCyclists = n;
 
-  while (remainingCyclists != 0) {
+  while (remainingCyclists != 1) {
     pthread_barrier_wait(&barrier);
+
     if (debug)
       printTrack();
+    begin = n - remainingCyclists;
 
-    mergeSort(sortedCyclists, 0, n - 1);
+    mergeSort(sortedCyclists, begin, n - 1);
     printRank(sortedCyclists, n - 1);
-    pthread_barrier_wait(&barrier);
+
+    currentCyclist = sortedCyclists[begin];
+    Cyclist current = cyclists[currentCyclist];
+
+    if (current.laps > previousLap && current.laps % 2 == 0) {
+
+      previousLap = current.laps;
+      current.broken = 1;
+
+      printf("Ciclista %d foi embora!!\n", currentCyclist + 1);
+      pthread_cancel(threads[currentCyclist]);
+      remainingCyclists--;
+      pthread_barrier_destroy(&barrier);
+      pthread_barrier_init(&barrier, NULL, remainingCyclists + 1);
+
+      track[current.linePosition][current.columnPosition] = 0;
+    }
+
+    for (i = 0; i < n; i++) {
+      if (!cyclists[i].broken)
+        pthread_mutex_unlock(&availableCyclists[i]);
+    }
+    
   }
   //for (i = 0; i < n; i++) {
     //pthread_join(threads[i], NULL);
@@ -308,7 +341,7 @@ int main(int argc, char ** argv) {
     }
   }
 
-  printf("FIM DA PRIMEIRA ITERAÇÃO:\n");
+  printf("FIM DA CORRIDA:\n");
   printTrack();
 
   free(cyclists);
