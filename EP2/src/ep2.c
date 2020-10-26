@@ -16,13 +16,14 @@ typedef struct cyclist {
   int broken;
 } Cyclist;
 
-
 int d, n;
+int debug = 1;
 int *track[10];
 Cyclist *cyclists;
 
 pthread_mutex_t *sem[10], *availableCyclists;
 pthread_barrier_t barrier;
+pthread_t *threads;
 
 void printRank(int *vector, int b) {
   int rank = 1, i;
@@ -109,7 +110,7 @@ void changePosition(int cyclist) {
   int line, column, changed;
   line = cyclists[cyclist].linePosition;
   column = cyclists[cyclist].columnPosition;
-  //printf("Ciclista %d quer mudar de posição!\n", cyclist +1);
+
   pthread_mutex_lock(&sem[line][column]);
 
   pthread_mutex_lock(&sem[line][(column + 1) % d]);
@@ -123,12 +124,9 @@ void changePosition(int cyclist) {
     pthread_mutex_unlock(&sem[line][(column + 1) % d]);
 
     for (int i = line + 1; i < 10 && !changed; i++) {
-      //printf("i = %d j = %d quer entrar!\n", i, column);
       pthread_mutex_lock(&sem[i][column]);
-      //printf("i = %d j = %d entrou!\n", i, column);
-      //printf("i = %d j = %d quer entrar!\n", i, (column + 1) % d);
       pthread_mutex_lock(&sem[i][(column + 1) % d]);
-      //printf("i = %d j = %d entrou!\n", i, (column + 1) % d);
+
       if (track[i][column] == 0 && track[i][(column + 1)% d] == 0) {
         cyclists[cyclist].linePosition = i;
         cyclists[cyclist].columnPosition = (column + 1)% d;
@@ -137,14 +135,11 @@ void changePosition(int cyclist) {
       }
 
       pthread_mutex_unlock(&sem[i][(column + 1) % d]);
-      //printf("i = %d j = %d liberado!\n", i, (column + 1) % d);
       pthread_mutex_unlock(&sem[i][column]);
-      //printf("i = %d j = %d liberado!\n", i, column);
     }
   }
 
   if (changed) {
-    //printf("Ciclista %d mudou de posição!\n", cyclist + 1);
     if ((column + 1) % d == 0) {
       cyclists[cyclist].velocity = randomVelocity(cyclists[cyclist].velocity);
       cyclists[cyclist].laps++;
@@ -159,8 +154,6 @@ void * thread(void * id) {
   int cyclist = *((int *) id);
   int count = 10;
   int timeRemaining = 0;
-
-  //pthread_barrier_wait(&barrier);
 
   while (1) {
     switch (cyclists[cyclist].velocity) {
@@ -177,8 +170,10 @@ void * thread(void * id) {
     while (timeRemaining != 0) {
       usleep(60000);
       timeRemaining--;
+
       if (timeRemaining == 0)
         changePosition(cyclist);
+      
       pthread_barrier_wait(&barrier);
       //processamento do juiz
       pthread_mutex_lock(&availableCyclists[cyclist]);
@@ -202,16 +197,93 @@ void printTrack() {
   }
 }
 
+void judge(int remainingCyclists, int *sortedCyclists) {
+  int previousLap = 0;
+  int begin = 0, currentCyclist;
+  int brokenProbability;
+  int someoneHasBroken;
+  Cyclist current;
+
+  while (remainingCyclists != 1) {
+    pthread_barrier_wait(&barrier);
+
+    if (debug)
+      printTrack();
+
+    mergeSort(sortedCyclists, begin, n - 1);
+    printRank(sortedCyclists, n - 1);
+
+    someoneHasBroken = 0;
+
+    // verifica se o ciclista quebrou
+    for (int i = 0; i < n; i++) {
+      brokenProbability = (rand() % 100) + 1;
+
+      if (cyclists[i].laps == 0 || cyclists[i].broken)
+        continue;
+      
+      if (brokenProbability <= 5 && cyclists[i].laps % 6 == 0) {
+        cyclists[i].broken = 1;
+
+        printf("Ciclista %d quebrou!!\n", cyclists[i].id + 1);
+        pthread_cancel(threads[i]);
+        remainingCyclists--;
+
+        track[cyclists[i].linePosition][cyclists[i].columnPosition] = 0;
+
+        someoneHasBroken = 1;
+      }
+    }
+
+    currentCyclist = sortedCyclists[begin];
+    current = cyclists[currentCyclist];
+
+    /* alguém pode ter quebrado com os 5% nas primeiras posições,
+      assim que esse cara que quebrou ficar na primeira posição do sortedCyclists,
+      ele não é o último (pois já quebrou). Precisamos andar pra frente com o begin
+    */
+    while (current.broken) {
+      begin += 1;
+      currentCyclist = sortedCyclists[begin];
+      current = cyclists[currentCyclist];
+    }
+
+    if (current.laps > previousLap && current.laps % 2 == 0) {
+      previousLap = current.laps;
+
+      cyclists[currentCyclist].broken = 1;
+
+      printf("Ciclista %d foi embora!!\n", currentCyclist + 1);
+      pthread_cancel(threads[currentCyclist]);
+      remainingCyclists--;
+
+      begin += 1;
+
+      track[current.linePosition][current.columnPosition] = 0;
+
+      someoneHasBroken = 1;
+    }
+
+    if (someoneHasBroken) {
+      pthread_barrier_destroy(&barrier);
+      pthread_barrier_init(&barrier, NULL, remainingCyclists + 1);
+    }
+
+    for (int i = 0; i < n; i++) {
+      pthread_mutex_unlock(&availableCyclists[i]);
+    }
+  }
+}
+
 int main(int argc, char ** argv) {
   int i, *id, column = 0, remainingCyclists, currentCyclist, j;
-  int debug = 1, previousLap = 0, begin;
   int *sortedCyclists;
   d = atoi(argv[1]);
   n = atoi(argv[2]);
 
   currentCyclist = n;
 
-  pthread_t *threads = malloc(n*sizeof(pthread_t));
+  threads = malloc(n*sizeof(pthread_t));
   availableCyclists = malloc(n*sizeof(pthread_mutex_t));
 
   for (i = 0; i < n; i++) {
@@ -242,7 +314,6 @@ int main(int argc, char ** argv) {
       cyclists[currentCyclist - 1].laps = 0;
       cyclists[currentCyclist - 1].broken = 0;
       cyclists[currentCyclist - 1].id = currentCyclist;
-      //sortedCyclists[currentCyclist - 1] = cyclists[currentCyclist - 1];
       i += 1;
       remainingCyclists--;
       currentCyclist--;
@@ -265,12 +336,13 @@ int main(int argc, char ** argv) {
       cyclists[currentCyclist - 1].laps = 0;
       cyclists[currentCyclist - 1].broken = 0;
       cyclists[currentCyclist - 1].id = currentCyclist;
-      //sortedCyclists[currentCyclist - 1] = cyclists[currentCyclist - 1];
       i += 1;
       remainingCyclists--;
       currentCyclist--;
     }
   }
+
+  srand(time(NULL));
 
   if (debug)
     printTrack();
@@ -298,42 +370,7 @@ int main(int argc, char ** argv) {
 
   remainingCyclists = n;
 
-  while (remainingCyclists != 1) {
-    pthread_barrier_wait(&barrier);
-
-    if (debug)
-      printTrack();
-    begin = n - remainingCyclists;
-
-    mergeSort(sortedCyclists, begin, n - 1);
-    printRank(sortedCyclists, n - 1);
-
-    currentCyclist = sortedCyclists[begin];
-    Cyclist current = cyclists[currentCyclist];
-
-    if (current.laps > previousLap && current.laps % 2 == 0) {
-
-      previousLap = current.laps;
-      current.broken = 1;
-
-      printf("Ciclista %d foi embora!!\n", currentCyclist + 1);
-      pthread_cancel(threads[currentCyclist]);
-      remainingCyclists--;
-      pthread_barrier_destroy(&barrier);
-      pthread_barrier_init(&barrier, NULL, remainingCyclists + 1);
-
-      track[current.linePosition][current.columnPosition] = 0;
-    }
-
-    for (i = 0; i < n; i++) {
-      if (!cyclists[i].broken)
-        pthread_mutex_unlock(&availableCyclists[i]);
-    }
-    
-  }
-  //for (i = 0; i < n; i++) {
-    //pthread_join(threads[i], NULL);
-  //}
+  judge(remainingCyclists, sortedCyclists);
 
   for (i = 0; i < 10; i++) {
     for (j = 0; j < d; j++) {
