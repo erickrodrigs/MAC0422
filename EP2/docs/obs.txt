@@ -3,18 +3,5 @@ d é em metros
 249 < d
 5 < n <= 5*d
 
-DUVIDAS???
 
-Ultrapassagens: 
-  - só acontecem se for para alguma faixa mais externa?
-Velocidades: 
-  - como fazer pra andar os caras de 30km/h e os caras de 60km/h de maneira correta?
-  - fazer os de 60km/h rodar duas vezes (na segunda os de 30km/h rodam)
-  - como fazer os cara andar devagar se tem alguem na frente dele
-Eliminação dos ciclistas:
-  - barrier_wait depende dos n ciclistas. Quando um for eliminado, é necessário destruir a thread dele.
-  Então, como mudar o count do barrier para que não ocorra deadlock?
-  - será que vale a pena criar nossa própria implementação de barreira?
-  - thread coordenadora seria uma opção viável?
-
-Como estamos usando barreira de sincronização, apenas uma thread precisa dar usleep
+Mudar a função que printa o rank.
