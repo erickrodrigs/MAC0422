@@ -24,6 +24,7 @@ typedef struct node {
 int d, n;
 int debug = 1;
 int *track[10];
+int *canContinue;
 Cyclist *cyclists;
 
 //stack.h
@@ -210,16 +211,17 @@ void * thread(void * id) {
     }
 
     while (timeRemaining != 0) {
-      //
       
       timeRemaining--;
       pthread_barrier_wait(&barrier);
       if (timeRemaining == 0)
         changePosition(cyclist);
-      
+      canContinue[cyclist] = 0;
+      printf("%d está preso na barreira\n", cyclist + 1);
       pthread_barrier_wait(&barrier);
       //processamento do juiz
-      pthread_mutex_lock(&availableCyclists[cyclist]);
+      while (!canContinue[cyclist])
+        usleep(100);  
     }
 
     
@@ -262,7 +264,7 @@ void judge(int remainingCyclists, int *sortedCyclists) {
     
 
     pthread_barrier_wait(&barrier);
-      //change position
+      //change position, canContinue= 0;
     pthread_barrier_wait(&barrier);
 
     if (debug)
@@ -347,9 +349,9 @@ Acontece quando  o último passa na coluna 0.
       pthread_barrier_init(&barrier, NULL, remainingCyclists + 1);
     }
 
-    for (int i = 0; i < n; i++) {
-      pthread_mutex_unlock(&availableCyclists[i]);
-    }
+    for (int i = 0; i < n; i++)
+      if (!cyclists[i].broken)
+        canContinue[i] = 1;
   }
 }
 
@@ -381,6 +383,10 @@ int main(int argc, char ** argv) {
 
 
   id = malloc(n*sizeof(int));
+  canContinue = malloc(n*sizeof(int));
+
+  for (i = 0; i < n; i++)
+    canContinue[i] = 0;
 
   for (i = 0; i < 10; i++) {
     track[i] = malloc(d*sizeof(int));
@@ -473,6 +479,7 @@ int main(int argc, char ** argv) {
   free(cyclists);
   free(threads);
   free(id);
+  free(canContinue);
 
   //falta dar free nas partes de dentro
   free(stacks);
