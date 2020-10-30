@@ -251,7 +251,7 @@ void judge(int remainingCyclists, int *sortedCyclists) {
   int maximumVelocity;
   int lapCompleted;
 
-  while (remainingCyclists != 1) {
+  while (remainingCyclists > 1) {
     maximumVelocity = 0;
     for (int i = 0; i < n; i++) {
       if (cyclists[i].velocity == 3)

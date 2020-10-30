@@ -3,5 +3,74 @@ d é em metros
 249 < d
 5 < n <= 5*d
 
+Do enunciado do EP...
+- Os ciclistas largam em fila ordenados aleatoriamente com no máximo 5 ciclistas lado a lado em cada posição.
+- Se a velocidade sorteada para um ciclista for de 30Km/h, todos os ciclistas que estiverem imediatamente atrás dele na mesma
+linha que ele, devem pedalar a 30Km/h
+- Ultrapassagens podem ser realizadas caso haja espaço em alguma pista mais externa
+(ultrapassagens só podem ser realizadas usando as pistas externas) => VAI FICAR POR ULTIMO.
+- Considere ainda que nas 2 últimas voltas há a chance de 10% de 1 ciclista
+aleatório qualquer e respeitando as regras de ultrapassagem, fazer essas 2 últimas voltas a 90Km/h (1m a
+cada 40ms).
+  - A simulação do seu código deve simular a corrida em intervalos de 60ms até as duas últimas voltas. A partir das
+duas últimas voltas, caso algum ciclista tenha sido sorteado para pedalar a 90Km/h, a simulação deve
+passar a simular a corrida em intervalos de 20ms.
+- Caso algum ciclista quebre, essa informação deve ser exibida na tela no momento exato em que ele quebrou.
+A volta em que ele estava e o identificador dele devem ser informados.
+- Entretanto, se houverem apenas 5 ciclistas na prova, a probabilidade de quebra para todos deixa de existir. (IMPORTANTE!!!)
+- Em casos onde mais de um ciclista passe pela linha de chegada na última posição
+nas voltas de eliminação, o ciclista eliminado deve ser aleatoriamente sorteado dentre esses últimos.
+
+- A saı́da do seu programa deve ser um relatório informando a cada volta completada, as posições de
+todos os ciclistas naquela volta.
+- Ao término da corrida (depois que todos os ciclistas passarem pela linha
+de chegada), o ranqueamento final de todos os ciclistas, e o instante de tempo que cada um cruzou a linha
+de chegada pela última vez, também deve ser impresso na saı́da (considere que a simulação começa no
+instante de tempo zero).
+- Ciclistas que quebrarem devem ser identificados nessa lista final como tendo
+quebrado e, ao invés de mostrar as suas colocações, deve ser informada a volta em que eles quebraram.
+- Seu programa deve ainda permitir uma opção de debug que informa a cada 60ms (e 20ms nas duas
+últimas voltas, caso alguém pedale a 90Km/h) o status de cada posição da pista, ou seja, o identificador
+do(s) ciclista(s) naquela posição ou a informação de que não há nenhum ciclista ali.
+
+- Tudo da pagina 3 do PDF (entrega!)
+
+
+- Botar um mutex no rand()
+- Caso loteria: 6 podem quebrar ao mesmo tempo! (rlx rlx rlx)
+
 
 Mudar a função que printa o rank.
+
+dois ciclistas restantes
+
+o primeiro está numa volta multipla de 6 e quebra (pq a gente quebra antes de eliminar)
+o segundo tá numa volta par e é elimando (pq ele não é o primeiro para ganhar)
+
+aí os dois saem da pilha
+
+
+
+Ciclista 0
+
+
+VOLTA X: 19 18
+
+
+19 quebrou
+
+18 vai embora
+
+
+OS DOIS ULTIMOS PODEM QUEBRAR AO MESMO TEMPO
+
+suponha que ambos cheguem junto na volta 42: o código pode quebrar os dois caras
+Nesse caso, quem é o ganhador?
+
+nesse caso aqui, o nosso codigo trata o ganhador como o que tiver o numero maior
+
+Ciclistas quebrados saem do rank, então eles perdem???
+
+
+
+
