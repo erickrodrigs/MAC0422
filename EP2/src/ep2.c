@@ -25,6 +25,7 @@ int d, n;
 int debug = 1;
 int *track[10];
 int *canContinue;
+int countBroken = 0;
 Cyclist *cyclists;
 
 //stack.h
@@ -217,7 +218,7 @@ void * thread(void * id) {
       if (timeRemaining == 0)
         changePosition(cyclist);
       canContinue[cyclist] = 0;
-      printf("%d está preso na barreira\n", cyclist + 1);
+
       pthread_barrier_wait(&barrier);
       //processamento do juiz
       while (!canContinue[cyclist])
@@ -271,7 +272,12 @@ void judge(int remainingCyclists, int *sortedCyclists) {
       printTrack();
 
     mergeSort(sortedCyclists, 0, n - 1);
-    printRank(sortedCyclists, n - 1);
+    //printRank(sortedCyclists, n - 1);
+
+    for (int i = 0; i < n; i++) {
+      if (!cyclists[i].broken)
+        printf("Ciclista %d fez %d voltas\n", cyclists[i].id, cyclists[i].laps);
+    }
 
     someoneHasBroken = 0;
 
@@ -282,10 +288,11 @@ void judge(int remainingCyclists, int *sortedCyclists) {
       if (cyclists[i].laps == 0 || cyclists[i].broken)
         continue;
       
-      if (brokenProbability <= 5 && cyclists[i].laps % 6 == 0) {
+      if (brokenProbability <= 5 && cyclists[i].laps % 6 == 0 && cyclists[i].columnPosition == 0) {
         cyclists[i].broken = 1;
 
-        printf("Ciclista %d quebrou!!\n", cyclists[i].id + 1);
+        printf("Ciclista %d quebrou!!\n", cyclists[i].id);
+        countBroken += 1;
         pthread_cancel(threads[i]);
         remainingCyclists--;
 
@@ -353,6 +360,8 @@ Acontece quando  o último passa na coluna 0.
       if (!cyclists[i].broken)
         canContinue[i] = 1;
   }
+
+  printf("QUEBRADOS: %d\n", countBroken);
 }
 
 int main(int argc, char ** argv) {
