@@ -17,7 +17,7 @@ duas últimas voltas, caso algum ciclista tenha sido sorteado para pedalar a 90K
 passar a simular a corrida em intervalos de 20ms.
 - Caso algum ciclista quebre, essa informação deve ser exibida na tela no momento exato em que ele quebrou.
 A volta em que ele estava e o identificador dele devem ser informados.
-- Entretanto, se houverem apenas 5 ciclistas na prova, a probabilidade de quebra para todos deixa de existir. (IMPORTANTE!!!)
+- (OK!) Entretanto, se houverem apenas 5 ciclistas na prova, a probabilidade de quebra para todos deixa de existir. (IMPORTANTE!!!)
 - Em casos onde mais de um ciclista passe pela linha de chegada na última posição
 nas voltas de eliminação, o ciclista eliminado deve ser aleatoriamente sorteado dentre esses últimos.
 

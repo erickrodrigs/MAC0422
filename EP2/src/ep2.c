@@ -122,11 +122,21 @@ void mergeSort(int *vector, int a, int b) {
 }
 // sort.h
 
-int randomVelocity(int previousVelocity) {
+int randomVelocity(int id) {
   int probability;
   int value;
 
-  switch (previousVelocity) {
+  value = (rand() % 100) + 1;
+
+  if (cyclists[id].velocity == 3)
+    return 3;
+
+  if (cyclists[id].laps >= 2 * (n - countBroken - 1)) {
+    if (value <= 10)
+      return 3;
+  }
+
+  switch (cyclists[id].velocity) {
     case 1:
       probability = 20;
       break;
@@ -136,8 +146,6 @@ int randomVelocity(int previousVelocity) {
     default:
       break;
   }
-
-  value = (rand() % 100) + 1;
 
   if (value > probability)
     return 2; // 60km/h
@@ -154,7 +162,7 @@ void changePosition(int cyclist) {
 
   pthread_mutex_lock(&sem[line][(column + 1) % d]);
   if (track[line][(column + 1) % d] == 0) {
-    cyclists[cyclist].columnPosition = (column + 1)% d;
+    cyclists[cyclist].columnPosition = (column + 1) % d;
     track[line][(column + 1)% d] = cyclist + 1;
     changed = 1;
     pthread_mutex_unlock(&sem[line][(column + 1) % d]);
@@ -166,10 +174,10 @@ void changePosition(int cyclist) {
       pthread_mutex_lock(&sem[i][column]);
       pthread_mutex_lock(&sem[i][(column + 1) % d]);
 
-      if (track[i][column] == 0 && track[i][(column + 1)% d] == 0) {
+      if (track[i][column] == 0 && track[i][(column + 1) % d] == 0) {
         cyclists[cyclist].linePosition = i;
-        cyclists[cyclist].columnPosition = (column + 1)% d;
-        track[i][(column + 1)% d] = cyclist + 1;
+        cyclists[cyclist].columnPosition = (column + 1) % d;
+        track[i][(column + 1) % d] = cyclist + 1;
         changed = 1;
       }
 
@@ -180,9 +188,9 @@ void changePosition(int cyclist) {
 
   if (changed) {
     if ((column + 1) % d == 0) {
-      cyclists[cyclist].velocity = randomVelocity(cyclists[cyclist].velocity);
       cyclists[cyclist].laps++;
-      laps = cyclists[cyclist].laps; 
+      laps = cyclists[cyclist].laps;
+      cyclists[cyclist].velocity = randomVelocity(cyclist);
       
       pthread_mutex_lock(&lapsSem[laps]);
       stacks[laps] = push(stacks[laps], cyclist);
@@ -282,23 +290,28 @@ void judge(int remainingCyclists, int *sortedCyclists) {
     someoneHasBroken = 0;
 
     // verifica se o ciclista quebrou
-    for (int i = 0; i < n; i++) {
-      brokenProbability = (rand() % 100) + 1;
+    if (remainingCyclists > 5) {
+      for (int i = 0; i < n; i++) {
+        brokenProbability = (rand() % 100) + 1;
 
-      if (cyclists[i].laps == 0 || cyclists[i].broken)
-        continue;
-      
-      if (brokenProbability <= 5 && cyclists[i].laps % 6 == 0 && cyclists[i].columnPosition == 0) {
-        cyclists[i].broken = 1;
+        if (cyclists[i].laps == 0 || cyclists[i].broken)
+          continue;
+        
+        if (brokenProbability <= 5 && cyclists[i].laps % 6 == 0 && cyclists[i].columnPosition == 0) {
+          cyclists[i].broken = 1;
 
-        printf("Ciclista %d quebrou!!\n", cyclists[i].id);
-        countBroken += 1;
-        pthread_cancel(threads[i]);
-        remainingCyclists--;
+          printf("Ciclista %d quebrou!!\n", cyclists[i].id);
+          countBroken += 1;
+          pthread_cancel(threads[i]);
+          remainingCyclists--;
 
-        track[cyclists[i].linePosition][cyclists[i].columnPosition] = 0;
+          track[cyclists[i].linePosition][cyclists[i].columnPosition] = 0;
 
-        someoneHasBroken = 1;
+          someoneHasBroken = 1;
+
+          if (remainingCyclists == 5)
+            break;
+        }
       }
     }
 
