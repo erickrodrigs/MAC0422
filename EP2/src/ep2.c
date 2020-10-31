@@ -26,6 +26,7 @@ int debug = 1;
 int *track[10];
 int *canContinue;
 int countBroken = 0;
+int maximumVelocity = 0;
 Cyclist *cyclists;
 
 //stack.h
@@ -206,16 +207,18 @@ void * thread(void * id) {
   int cyclist = *((int *) id);
   int count = 10;
   int timeRemaining = 0;
+  int executionTime = 0;
 
   while (1) {
     switch (cyclists[cyclist].velocity) {
       case 1:
-        timeRemaining = 2;
+        timeRemaining = (maximumVelocity ? 6 : 2);
         break;
       case 2:
-        timeRemaining = 1;
+        timeRemaining = (maximumVelocity ? 3 : 1);
         break;
       default:
+        timeRemaining = 1;
         break;
     }
 
@@ -230,7 +233,12 @@ void * thread(void * id) {
       pthread_barrier_wait(&barrier);
       //processamento do juiz
       while (!canContinue[cyclist])
-        usleep(100);  
+        usleep(100);
+
+      if (!executionTime && maximumVelocity) {
+        executionTime = 1;
+        timeRemaining *= 3;
+      }
     }
 
     
@@ -256,7 +264,7 @@ void judge(int remainingCyclists, int *sortedCyclists) {
   int currentCyclist;
   int brokenProbability;
   int someoneHasBroken;
-  int maximumVelocity;
+  //int maximumVelocity;
   int lapCompleted;
 
   while (remainingCyclists > 1) {
@@ -266,6 +274,8 @@ void judge(int remainingCyclists, int *sortedCyclists) {
         maximumVelocity = 1;
     }//é possível checar lá em cima também
     
+    printf("%d\n", maximumVelocity);
+
     if (maximumVelocity)
       usleep(20000);
     else
