@@ -14,6 +14,7 @@ typedef struct cyclist {
   int velocity;
   int laps;
   int broken;
+  int finished;
 } Cyclist;
 
 typedef struct node {
@@ -59,7 +60,7 @@ int top(Node *stack) {
 }
 
 //stack.h 
-pthread_mutex_t *sem[10], *availableCyclists, *lapsSem;
+pthread_mutex_t *sem[10], *availableCyclists, *lapsSem, randMutex;
 pthread_barrier_t barrier;
 pthread_t *threads;
 Node **stacks;
@@ -127,7 +128,9 @@ int randomVelocity(int id) {
   int probability;
   int value;
 
+  pthread_mutex_lock(&randMutex);
   value = (rand() % 100) + 1;
+  pthread_mutex_unlock(&randMutex);
 
   if (cyclists[id].velocity == 3)
     return 3;
@@ -160,6 +163,12 @@ void changePosition(int cyclist) {
   column = cyclists[cyclist].columnPosition;
 
   pthread_mutex_lock(&sem[line][column]);
+
+  if (cyclists[cyclist].laps >= 2 * n) {
+    cyclists[cyclist].finished = 1;
+    pthread_mutex_unlock(&sem[line][column]);
+    return;
+  }
 
   pthread_mutex_lock(&sem[line][(column + 1) % d]);
   if (track[line][(column + 1) % d] == 0) {
@@ -304,7 +313,7 @@ void judge(int remainingCyclists, int *sortedCyclists) {
       for (int i = 0; i < n; i++) {
         brokenProbability = (rand() % 100) + 1;
 
-        if (cyclists[i].laps == 0 || cyclists[i].broken)
+        if (cyclists[i].laps == 0 || cyclists[i].broken || cyclists[i].finished)
           continue;
         
         if (brokenProbability <= 5 && cyclists[i].laps % 6 == 0 && cyclists[i].columnPosition == 0) {
@@ -394,25 +403,26 @@ int main(int argc, char ** argv) {
   d = atoi(argv[1]);
   n = atoi(argv[2]);
 
-  stacks = malloc(4*n*sizeof(Node *));
+  stacks = malloc(2*n*sizeof(Node *));
 
-  for (i = 0; i < 4*n; i++)
+  for (i = 0; i < 2*n; i++)
     stacks[i] = NULL;
 
   currentCyclist = n;
 
   threads = malloc(n*sizeof(pthread_t));
   availableCyclists = malloc(n*sizeof(pthread_mutex_t));
-  lapsSem = malloc(4*n*sizeof(pthread_mutex_t));
+  lapsSem = malloc(2*n*sizeof(pthread_mutex_t));
 
   for (i = 0; i < n; i++) {
     pthread_mutex_init(&availableCyclists[i], NULL);
     pthread_mutex_lock(&availableCyclists[i]);
   }
 
-  for (i = 0; i < 4*n; i++)
+  for (i = 0; i < 2*n; i++)
     pthread_mutex_init(&lapsSem[i], NULL);
 
+  pthread_mutex_init(&randMutex, NULL);
 
   id = malloc(n*sizeof(int));
   canContinue = malloc(n*sizeof(int));
@@ -441,6 +451,7 @@ int main(int argc, char ** argv) {
       cyclists[currentCyclist - 1].laps = 0;
       cyclists[currentCyclist - 1].broken = 0;
       cyclists[currentCyclist - 1].id = currentCyclist;
+      cyclists[currentCyclist - 1].finished = 0;
       i += 1;
       remainingCyclists--;
       currentCyclist--;
@@ -463,6 +474,7 @@ int main(int argc, char ** argv) {
       cyclists[currentCyclist - 1].laps = 0;
       cyclists[currentCyclist - 1].broken = 0;
       cyclists[currentCyclist - 1].id = currentCyclist;
+      cyclists[currentCyclist - 1].finished = 0;
       i += 1;
       remainingCyclists--;
       currentCyclist--;
