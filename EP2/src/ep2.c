@@ -409,16 +409,21 @@ Acontece quando  o último passa na coluna 0.
       lap += 1;
     }
 
-    if (someoneHasBroken) {
-      pthread_barrier_destroy(&barrier);
-      pthread_barrier_init(&barrier, NULL, remainingCyclists + 1);
+    if (remainingCyclists > 1) {
+      if (someoneHasBroken) {
+        pthread_barrier_destroy(&barrier);
+        pthread_barrier_init(&barrier, NULL, remainingCyclists + 1);
+      }
+
+      for (int i = 0; i < n; i++)
+        if (!cyclists[i].broken)
+          canContinue[i] = 1;
     }
-
-    for (int i = 0; i < n; i++)
-      if (!cyclists[i].broken)
-        canContinue[i] = 1;
+    else {
+      pthread_cancel(threads[top(stacks[lap])]);
+    }
   }
-
+  pthread_barrier_destroy(&barrier);
   printf("QUEBRADOS: %d\n", countBroken);
 }
 
@@ -542,13 +547,16 @@ int main(int argc, char ** argv) {
 
   for (i = 0; i < 10; i++) {
     for (j = 0; j < d; j++) {
-      pthread_mutex_destroy(&sem[i][d]);
+      pthread_mutex_destroy(&sem[i][j]);
     }
+    free(sem[i]);
     free(track[i]);
   }
 
-  for (i = 0; i < n; i++)
+  for (i = 0; i < n; i++) {
+    pthread_join(threads[i], NULL);
     pthread_mutex_destroy(&availableCyclists[i]);
+  }
 
   for (i = 0; i < 2*(n + 1); i++) {
     pthread_mutex_destroy(&lapsSem[i]);
@@ -557,8 +565,13 @@ int main(int argc, char ** argv) {
       stacks[i] = pop(stacks[i]);
   }
 
-  //pthread_barrier_destroy(&barrier);
+
+
   pthread_mutex_destroy(&randMutex);
+
+  free(availableCyclists);
+  free(lapsSem);
+  free(sortedCyclists);
   free(cyclists);
   free(threads);
   free(id);
