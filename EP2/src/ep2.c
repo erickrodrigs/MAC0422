@@ -5,8 +5,6 @@
 #include <time.h>
 #include <sys/time.h>
 
-#define MAX 400
-
 typedef struct cyclist {
   int id;
   int columnPosition;
@@ -19,6 +17,7 @@ typedef struct cyclist {
 
 typedef struct node {
   int id;
+  int size;
   struct node *next;
 } Node;
 
@@ -31,16 +30,22 @@ int maximumVelocity = 0;
 Cyclist *cyclists;
 
 //stack.h
+int empty(Node *stack) {
+  return stack == NULL;
+}
+
+int stackSize(Node *stack) {
+  if (empty(stack))
+    return 0;
+  return stack->size;
+}
 
 Node *push(Node *stack, int id) {
   Node *node = malloc(sizeof(Node));
+  node->size = stackSize(stack) + 1;
   node->id = id;
   node->next = stack;
   return node;
-}
-
-int empty(Node *stack) {
-  return stack == NULL;
 }
 
 Node *pop(Node *stack) {
@@ -57,6 +62,23 @@ int top(Node *stack) {
   if (!empty(stack))
     return stack->id;
   return -1;
+}
+
+void printStack(Node *stack) {
+  Node *current = stack;
+  int size = stackSize(stack);
+  int *ranking = malloc(size*sizeof(int));
+
+  for (int i = 0; i < size; i++) {
+    ranking[i] = current->id;
+    current = current->next;
+  }
+
+  for (int i = size - 1, j = 1; i >= 0; i--, j++) {
+    printf("Ciclista %d está %dº lugar\n", ranking[i] + 1, j);
+  }
+
+  free(ranking);
 }
 
 //stack.h 
@@ -158,7 +180,7 @@ int randomVelocity(int id) {
 }
 
 void changePosition(int cyclist) {
-  int line, column, changed, laps;
+  int line, column, changed = 0, laps;
   line = cyclists[cyclist].linePosition;
   column = cyclists[cyclist].columnPosition;
 
@@ -269,7 +291,7 @@ void printTrack() {
 }
 
 void judge(int remainingCyclists, int *sortedCyclists) {
-  int lap = 2, line, column;
+  int lap = 1, line, column;
   int currentCyclist;
   int brokenProbability;
   int someoneHasBroken;
@@ -301,10 +323,10 @@ void judge(int remainingCyclists, int *sortedCyclists) {
     mergeSort(sortedCyclists, 0, n - 1);
     //printRank(sortedCyclists, n - 1);
 
-    for (int i = 0; i < n; i++) {
-      if (!cyclists[i].broken)
-        printf("Ciclista %d fez %d voltas\n", cyclists[i].id, cyclists[i].laps);
-    }
+    //for (int i = 0; i < n; i++) {
+      //if (!cyclists[i].broken)
+        //printf("Ciclista %d fez %d voltas\n", cyclists[i].id, cyclists[i].laps);
+    //}
 
     someoneHasBroken = 0;
 
@@ -320,6 +342,7 @@ void judge(int remainingCyclists, int *sortedCyclists) {
           cyclists[i].broken = 1;
 
           printf("Ciclista %d quebrou!!\n", cyclists[i].id);
+          printf("Ele estava na volta %d\n", cyclists[i].laps);
           countBroken += 1;
           pthread_cancel(threads[i]);
           remainingCyclists--;
@@ -361,26 +384,29 @@ Acontece quando  o último passa na coluna 0.
     
 
     if (lapCompleted) {
-      //preparar a saída especial, informando a posição de cada um
+      printStack(stacks[lap]);
 
-      while (cyclists[top(stacks[lap])].broken) //será que tem algum problema?
-        stacks[lap] = pop(stacks[lap]);
+      if (lap % 2 == 0){
+        while (cyclists[top(stacks[lap])].broken) //será que tem algum problema?
+          stacks[lap] = pop(stacks[lap]);
 
-      if (cyclists[top(stacks[lap])].columnPosition == 0) { //será que tem algum problema?
-        currentCyclist = top(stacks[lap]);
-        cyclists[currentCyclist].broken = 1;
-        line = cyclists[currentCyclist].linePosition;
-        column = cyclists[currentCyclist].columnPosition;
+        if (cyclists[top(stacks[lap])].columnPosition == 0) { //será que tem algum problema?
+          currentCyclist = top(stacks[lap]);
+          cyclists[currentCyclist].broken = 1;
+          line = cyclists[currentCyclist].linePosition;
+          column = cyclists[currentCyclist].columnPosition;
 
-        printf("Ciclista %d foi embora!!\n", currentCyclist + 1);
-        pthread_cancel(threads[currentCyclist]);
-        remainingCyclists--;
+          printf("Ciclista %d foi embora!!\n", currentCyclist + 1);
+          pthread_cancel(threads[currentCyclist]);
+          remainingCyclists--;
 
-        track[line][column] = 0;
-        //elimina o topo da pilha da pista = cancela, printf, zerar a posição, diminuir remaining cyclists, broken = 1
-        lap += 2;
-        someoneHasBroken = 1;
+          track[line][column] = 0;
+          //elimina o topo da pilha da pista = cancela, printf, zerar a posição, diminuir remaining cyclists, broken = 1
+          
+          someoneHasBroken = 1;
+        }
       }
+      lap += 1;
     }
 
     if (someoneHasBroken) {
