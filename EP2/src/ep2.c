@@ -323,10 +323,10 @@ void judge(int remainingCyclists, int *sortedCyclists) {
     mergeSort(sortedCyclists, 0, n - 1);
     //printRank(sortedCyclists, n - 1);
 
-    //for (int i = 0; i < n; i++) {
-      //if (!cyclists[i].broken)
-        //printf("Ciclista %d fez %d voltas\n", cyclists[i].id, cyclists[i].laps);
-    //}
+    for (int i = 0; i < n; i++) {
+      if (!cyclists[i].broken)
+        printf("Ciclista %d fez %d voltas\n", cyclists[i].id, cyclists[i].laps);
+    }
 
     someoneHasBroken = 0;
 
@@ -429,23 +429,23 @@ int main(int argc, char ** argv) {
   d = atoi(argv[1]);
   n = atoi(argv[2]);
 
-  stacks = malloc(2*n*sizeof(Node *));
+  stacks = malloc(2*(n + 1)*sizeof(Node *));
 
-  for (i = 0; i < 2*n; i++)
+  for (i = 0; i < 2*(n + 1); i++)
     stacks[i] = NULL;
 
   currentCyclist = n;
 
   threads = malloc(n*sizeof(pthread_t));
   availableCyclists = malloc(n*sizeof(pthread_mutex_t));
-  lapsSem = malloc(2*n*sizeof(pthread_mutex_t));
+  lapsSem = malloc(2*(n + 1)*sizeof(pthread_mutex_t));
 
   for (i = 0; i < n; i++) {
     pthread_mutex_init(&availableCyclists[i], NULL);
     pthread_mutex_lock(&availableCyclists[i]);
   }
 
-  for (i = 0; i < 2*n; i++)
+  for (i = 0; i < 2*(n + 1); i++)
     pthread_mutex_init(&lapsSem[i], NULL);
 
   pthread_mutex_init(&randMutex, NULL);
@@ -537,25 +537,33 @@ int main(int argc, char ** argv) {
 
   judge(remainingCyclists, sortedCyclists);
 
+  printf("FIM DA CORRIDA:\n");
+  printTrack();
+
   for (i = 0; i < 10; i++) {
     for (j = 0; j < d; j++) {
       pthread_mutex_destroy(&sem[i][d]);
     }
+    free(track[i]);
   }
 
-  printf("FIM DA CORRIDA:\n");
-  printTrack();
+  for (i = 0; i < n; i++)
+    pthread_mutex_destroy(&availableCyclists[i]);
 
+  for (i = 0; i < 2*(n + 1); i++) {
+    pthread_mutex_destroy(&lapsSem[i]);
+
+    while (!empty(stacks[i]))
+      stacks[i] = pop(stacks[i]);
+  }
+
+  //pthread_barrier_destroy(&barrier);
+  pthread_mutex_destroy(&randMutex);
   free(cyclists);
   free(threads);
   free(id);
   free(canContinue);
-
-  //falta dar free nas partes de dentro
   free(stacks);
-
-  for (i = 0; i < 10; i++)
-    free(track[i]);
 
   return 0;
 }

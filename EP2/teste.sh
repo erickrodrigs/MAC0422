@@ -4,13 +4,7 @@ A=1
 
 while [ $A -eq 1 ]
 do
-	./ep2 10 26 > log.txt
+	./ep2 10 26 || exit 1 
 
-	cat log.txt
-
-	if [ $? -eq 139 ]; then
-		echo "OVO MATA O SEGFAULTO KKKKKKKKK"
-		exit 1
-	fi
 done
 
