@@ -4,24 +4,9 @@
 #include <unistd.h>
 #include <time.h>
 #include <sys/time.h>
-
-typedef struct cyclist {
-  int id;
-  int columnPosition;
-  int linePosition;
-  int velocity;
-  int laps;
-  int broken;
-  int eliminated;
-  int finished;
-  double runningTime;
-} Cyclist;
-
-typedef struct node {
-  int id;
-  int size;
-  struct node *next;
-} Node;
+#include "stack.h"
+#include "cyclist.h"
+#include "sort.h"
 
 int d, n;
 int debug = 0;
@@ -30,65 +15,11 @@ int *canContinue;
 int countBroken = 0;
 int maximumVelocity = 0;
 struct timeval start;
-Cyclist *cyclists;
-
-//stack.h
-int empty(Node *stack) {
-  return stack == NULL;
-}
-
-int stackSize(Node *stack) {
-  if (empty(stack))
-    return 0;
-  return stack->size;
-}
-
-Node *push(Node *stack, int id) {
-  Node *node = malloc(sizeof(Node));
-  node->size = stackSize(stack) + 1;
-  node->id = id;
-  node->next = stack;
-  return node;
-}
-
-Node *pop(Node *stack) {
-  Node *next = NULL;
-
-  if (!empty(stack)) {
-    next = stack->next;
-    free(stack);
-  }
-  return next;
-}
-
-int top(Node *stack) {
-  if (!empty(stack))
-    return stack->id;
-  return -1;
-}
-
-void printStack(Node *stack) {
-  Node *current = stack;
-  int size = stackSize(stack);
-  int *ranking = malloc(size*sizeof(int));
-
-  for (int i = 0; i < size; i++) {
-    ranking[i] = current->id;
-    current = current->next;
-  }
-
-  for (int i = size - 1, j = 1; i >= 0; i--, j++) {
-    printf("Ciclista %d está %dº lugar\n", ranking[i] + 1, j);
-  }
-
-  free(ranking);
-}
-
-//stack.h 
 pthread_mutex_t *sem[10], *availableCyclists, *lapsSem, randMutex;
 pthread_barrier_t barrier;
 pthread_t *threads;
-Node **stacks;
+StackNode **stacks;
+Cyclist *cyclists;
 
 void printRank(int *vector, int b) {
   int rank = 1, i;
@@ -111,54 +42,6 @@ void printRank(int *vector, int b) {
     }
   }
 }
-// sort.h
-void merge(int *vector, int a, int q, int b) {
-  int i, j, k;
-  int * aux = malloc((b - a + 1)*sizeof(int));
-  
-  for (i = a; i <= q; i++)
-    aux[i - a] = vector[i];
-
-  for (i = b, j = q - a + 1; i >= q+1 ; i--, j++)
-    aux[j] = vector[i];
-
-  i = 0;
-  j = b - a;
-
-  for (k = a; k <= b; k++) {
-    if (cyclists[aux[i]].laps < cyclists[aux[j]].laps) {
-      vector[k] = aux[i];
-      i++;
-    }
-    else if (cyclists[aux[i]].laps == cyclists[aux[j]].laps) {
-      if (cyclists[aux[j]].runningTime > cyclists[aux[i]].runningTime) {
-        vector[k] = aux[j];
-        j--;
-      }
-      else {
-        vector[k] = aux[i];
-        i++;
-      }
-    }
-    else {
-      vector[k] = aux[j];
-      j--;
-    }
-  }
-
-  free(aux);
-}
-
-void mergeSort(int *vector, int a, int b) {
-  if (a < b) {
-    int q = (a + b)/2;
-    mergeSort(vector, a, q);
-    mergeSort(vector, q + 1, b);
-
-    merge(vector, a, q, b);
-  }
-}
-// sort.h
 
 int randomVelocity(int id) {
   int probability;
@@ -304,12 +187,10 @@ void * thread(void * id) {
 }
 
 void printTrack() {
-  int i, j;
-
   printf("\n\n");
 
-  for (i = 0; i < 10; i++) {
-    for (j = 0; j < d; j++) {
+  for (int i = 0; i < 10; i++) {
+    for (int j = 0; j < d; j++) {
       printf("%3d|  ", track[i][j]);
     }
     printf("\n");
@@ -323,7 +204,6 @@ void judge(int remainingCyclists) {
   int currentCyclist;
   int brokenProbability;
   int someoneHasLeft;
-  //int maximumVelocity;
   int lapCompleted;
 
   while (remainingCyclists > 1) {
@@ -347,14 +227,6 @@ void judge(int remainingCyclists) {
 
     if (debug)
       printTrack();
-
-    //mergeSort(sortedCyclists, 0, n - 1);
-    //printRank(sortedCyclists, n - 1);
-
-    // for (int i = 0; i < n; i++) {
-    //   if (!cyclists[i].broken && !cyclists[i].eliminated)
-    //     printf("Ciclista %d fez %d voltas\n", cyclists[i].id, cyclists[i].laps);
-    // }
 
     someoneHasLeft = 0;
 
@@ -385,23 +257,6 @@ void judge(int remainingCyclists) {
       }
     }
 
-    /* 
-
-Para armazenar a posição em que ele completou a volta, durante o change position, inserimos na pilha na volta equivalente.
-
-Vai ter uma variável local que corresponde ao lap que precisa ser elimanado. Começa valendo 2, depois 4, depois 6 ...
-
-Lap completa:
-  É uma lap que contém todos os ciclistas possíveis.
-
-  Uma lap é completa sse todos os ciclistas i tais que ciclistas[i].broken = 0 têm ciclistas[i].lap >= lapLocal 
-
-Último: 
-  é um ciclistas[i].broken = 0 numa lap completa com maior posição na pilha.
-
-Eliminação:
-Acontece quando  o último passa na coluna 0.
-*/
     lapCompleted = 1;
 
     for (int i = 0; i < n; i++)
@@ -453,87 +308,44 @@ Acontece quando  o último passa na coluna 0.
 
     for (int i = 0; i < n; i++)
       canContinue[i] = 1;
-
-    // if (remainingCyclists > 1) {
-    //   if (someoneHasLeft) {
-    //     pthread_barrier_destroy(&barrier);
-    //     pthread_barrier_init(&barrier, NULL, remainingCyclists + 1);
-    //   }
-
-    //   for (int i = 0; i < n; i++)
-    //     if (!cyclists[i].broken && !cyclists[i].eliminated)
-    //       canContinue[i] = 1;
-    // }
-    // else {
-    //   printf("CICLISTA VENCEDOR: %d\n", top(stacks[lap]) + 1);
-    //   pthread_cancel(threads[top(stacks[lap])]);
-    // }
   }
+
   pthread_barrier_destroy(&barrier);
-  printf("QUEBRADOS: %d\n", countBroken);
+  printf("CICLISTAS QUEBRADOS: %d\n", countBroken);
 }
 
-int main(int argc, char ** argv) {
-  int i, *id, column = 0, remainingCyclists, currentCyclist, j;
-  int *sortedCyclists;
+void putCyclistInTrack(int cyclistNumber, int line, int column) {
+  int id = cyclistNumber - 1;
 
-  debug = (argc == 4) ? 1 : 0;
+  track[line][column] = cyclistNumber;
+  cyclists[id].columnPosition = column;
+  cyclists[id].linePosition = line;
+  cyclists[id].velocity = 1;
+  cyclists[id].laps = 0;
+  cyclists[id].broken = 0;
+  cyclists[id].eliminated = 0;
+  cyclists[id].id = cyclistNumber;
+  cyclists[id].finished = 0;
+}
 
-  d = atoi(argv[1]);
-  n = atoi(argv[2]);
+void initTrack() {
+  int remainingCyclists;
+  int column = 0;
+  int i;
+  int currentCyclist = n;
 
-  gettimeofday(&start, NULL);
-
-  stacks = malloc(2*(n + 1)*sizeof(Node *));
-
-  for (i = 0; i < 2*(n + 1); i++)
-    stacks[i] = NULL;
-
-  currentCyclist = n;
-
-  threads = malloc(n*sizeof(pthread_t));
-  availableCyclists = malloc(n*sizeof(pthread_mutex_t));
-  lapsSem = malloc(2*(n + 1)*sizeof(pthread_mutex_t));
-
-  for (i = 0; i < n; i++) {
-    pthread_mutex_init(&availableCyclists[i], NULL);
-    pthread_mutex_lock(&availableCyclists[i]);
-  }
-
-  for (i = 0; i < 2*(n + 1); i++)
-    pthread_mutex_init(&lapsSem[i], NULL);
-
-  pthread_mutex_init(&randMutex, NULL);
-
-  id = malloc(n*sizeof(int));
-  canContinue = malloc(n*sizeof(int));
-
-  for (i = 0; i < n; i++)
-    canContinue[i] = 0;
-
-  for (i = 0; i < 10; i++) {
+  for (int i = 0; i < 10; i++) {
     track[i] = malloc(d*sizeof(int));
     
-    for (j = 0; j < d; j++)
+    for (int j = 0; j < d; j++)
       track[i][j] = 0;
   }
-
-  cyclists = malloc(n*sizeof(Cyclist));
-  sortedCyclists = malloc(n*sizeof(int));
 
   if (n % 5 != 0) {
     remainingCyclists = (n % 5);
     i = 0;
     while (remainingCyclists != 0) {
-      track[i][column] = currentCyclist;
-      cyclists[currentCyclist - 1].columnPosition = column;
-      cyclists[currentCyclist - 1].linePosition = i;
-      cyclists[currentCyclist - 1].velocity = 1;
-      cyclists[currentCyclist - 1].laps = 0;
-      cyclists[currentCyclist - 1].broken = 0;
-      cyclists[currentCyclist - 1].eliminated = 0;
-      cyclists[currentCyclist - 1].id = currentCyclist;
-      cyclists[currentCyclist - 1].finished = 0;
+      putCyclistInTrack(currentCyclist, i, column);
       i += 1;
       remainingCyclists--;
       currentCyclist--;
@@ -549,71 +361,53 @@ int main(int argc, char ** argv) {
       i = 0;
     }
     else {
-      track[i][column] = currentCyclist;
-      cyclists[currentCyclist - 1].columnPosition = column;
-      cyclists[currentCyclist - 1].linePosition = i;
-      cyclists[currentCyclist - 1].velocity = 1;
-      cyclists[currentCyclist - 1].laps = 0;
-      cyclists[currentCyclist - 1].broken = 0;
-      cyclists[currentCyclist - 1].eliminated = 0;
-      cyclists[currentCyclist - 1].id = currentCyclist;
-      cyclists[currentCyclist - 1].finished = 0;
+      putCyclistInTrack(currentCyclist, i, column);
       i += 1;
       remainingCyclists--;
       currentCyclist--;
     }
   }
+}
 
-  srand(time(NULL));
+void initMutex() {
+  availableCyclists = malloc(n * sizeof(pthread_mutex_t));
+  lapsSem = malloc(2 * (n + 1) * sizeof(pthread_mutex_t));
 
-  if (debug)
-    printTrack();
+  for (int i = 0; i < n; i++) {
+    pthread_mutex_init(&availableCyclists[i], NULL);
+    pthread_mutex_lock(&availableCyclists[i]);
+  }
 
-  pthread_barrier_init(&barrier, NULL, n + 1);
+  for (int i = 0; i < 2 * (n + 1); i++)
+    pthread_mutex_init(&lapsSem[i], NULL);
+  
+  pthread_mutex_init(&randMutex, NULL);
 
-  for (i = 0; i < 10; i++) {
+  for (int i = 0; i < 10; i++) {
     sem[i] = malloc(d * sizeof(pthread_mutex_t));
 
-    for (j = 0; j < d; j++) {
+    for (int j = 0; j < d; j++) {
       pthread_mutex_init(&sem[i][j], NULL);
     }
   }
-  
-  for (i = 0; i < n; i++)
-    sortedCyclists[i] = i;
+}
 
-  for (i = 0; i < n; i++) {
-    id[i] = i;
-    pthread_create(&threads[i], NULL, thread, &id[i]);
-  }
-
-  remainingCyclists = n;
-
-  judge(remainingCyclists);
-
-  printf("\nFIM DA CORRIDA!!!\n");
-
-  if (debug)
-    printTrack();
-
-  printf("\nCLASSIFICAÇÃO FINAL:\n");
-  mergeSort(sortedCyclists, 0, n - 1);
-  printRank(sortedCyclists, n - 1);
-
-  for (i = 0; i < 10; i++) {
-    for (j = 0; j < d; j++) {
+void freeAllocatedMemory(int *ids) {
+  for (int i = 0; i < 10; i++) {
+    for (int j = 0; j < d; j++) {
       pthread_mutex_destroy(&sem[i][j]);
     }
+    
     free(sem[i]);
     free(track[i]);
   }
 
-  for (i = 0; i < n; i++) {
+  for (int i = 0; i < n; i++) {
     pthread_join(threads[i], NULL);
     pthread_mutex_destroy(&availableCyclists[i]);
   }
 
-  for (i = 0; i < 2*(n + 1); i++) {
+  for (int i = 0; i < 2 * (n + 1); i++) {
     pthread_mutex_destroy(&lapsSem[i]);
 
     while (!empty(stacks[i]))
@@ -624,12 +418,61 @@ int main(int argc, char ** argv) {
 
   free(availableCyclists);
   free(lapsSem);
-  free(sortedCyclists);
   free(cyclists);
   free(threads);
-  free(id);
+  free(ids);
   free(canContinue);
   free(stacks);
+}
+
+int main(int argc, char ** argv) {
+  int *ids;
+
+  debug = (argc == 4) ? 1 : 0;
+
+  d = atoi(argv[1]);
+  n = atoi(argv[2]);
+
+  srand(time(NULL));
+  gettimeofday(&start, NULL);
+
+  cyclists = malloc(n * sizeof(Cyclist));
+  stacks = malloc(2 * (n + 1) * sizeof(StackNode *));
+  threads = malloc(n * sizeof(pthread_t));
+  ids = malloc(n * sizeof(int));
+  canContinue = malloc(n * sizeof(int));
+
+  pthread_barrier_init(&barrier, NULL, n + 1);
+
+  for (int i = 0; i < 2 * (n + 1); i++)
+    stacks[i] = NULL;
+
+  for (int i = 0; i < n; i++)
+    canContinue[i] = 0;
+
+  initMutex();
+  initTrack();
+
+  if (debug)
+    printTrack();
+
+  for (int i = 0; i < n; i++) {
+    ids[i] = i;
+    pthread_create(&threads[i], NULL, thread, &ids[i]);
+  }
+
+  judge(n);
+
+  printf("\nFIM DA CORRIDA!!!\n");
+
+  if (debug)
+    printTrack();
+
+  printf("\nCLASSIFICAÇÃO FINAL:\n");
+  mergeSort(ids, 0, n - 1, cyclists);
+  printRank(ids, n - 1);
+
+  freeAllocatedMemory(ids);
 
   return 0;
 }
