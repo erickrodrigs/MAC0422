@@ -25,13 +25,13 @@ nas voltas de eliminação, o ciclista eliminado deve ser aleatoriamente sortead
 
 - (OK!) A saı́da do seu programa deve ser um relatório informando a cada volta completada, as posições de
 todos os ciclistas naquela volta.
-- Ao término da corrida (depois que todos os ciclistas passarem pela linha
+- (OK!) Ao término da corrida (depois que todos os ciclistas passarem pela linha
 de chegada), o ranqueamento final de todos os ciclistas, e o instante de tempo que cada um cruzou a linha
 de chegada pela última vez, também deve ser impresso na saı́da (considere que a simulação começa no
 instante de tempo zero).
-- Ciclistas que quebrarem devem ser identificados nessa lista final como tendo
+- (OK!) Ciclistas que quebrarem devem ser identificados nessa lista final como tendo
 quebrado e, ao invés de mostrar as suas colocações, deve ser informada a volta em que eles quebraram.
-- Seu programa deve ainda permitir uma opção de debug que informa a cada 60ms (e 20ms nas duas
+- (OK!) Seu programa deve ainda permitir uma opção de debug que informa a cada 60ms (e 20ms nas duas
 últimas voltas, caso alguém pedale a 90Km/h) o status de cada posição da pista, ou seja, o identificador
 do(s) ciclista(s) naquela posição ou a informação de que não há nenhum ciclista ali.
 
