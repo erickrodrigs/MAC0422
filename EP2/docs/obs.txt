@@ -23,7 +23,7 @@ nas voltas de eliminação, o ciclista eliminado deve ser aleatoriamente sortead
 - 
 
 
-- A saı́da do seu programa deve ser um relatório informando a cada volta completada, as posições de
+- (OK!) A saı́da do seu programa deve ser um relatório informando a cada volta completada, as posições de
 todos os ciclistas naquela volta.
 - Ao término da corrida (depois que todos os ciclistas passarem pela linha
 de chegada), o ranqueamento final de todos os ciclistas, e o instante de tempo que cada um cruzou a linha
@@ -40,41 +40,14 @@ do(s) ciclista(s) naquela posição ou a informação de que não há nenhum cic
 - Tudo da pagina 3 do PDF (entrega!)
 
 
-- Botar um mutex no rand()
-- Caso loteria: 6 podem quebrar ao mesmo tempo! (rlx rlx rlx)
+- (OK!) Botar um mutex no rand()
 
 
 Mudar a função que printa o rank.
 
-dois ciclistas restantes
+-Tirar o que ganhou não faz sentido, uma vez que está muito acima da hora e professor muda de regra toda hora
 
-o primeiro está numa volta multipla de 6 e quebra (pq a gente quebra antes de eliminar)
-o segundo tá numa volta par e é elimando (pq ele não é o primeiro para ganhar)
-
-aí os dois saem da pilha
-
-
-
-Ciclista 0
-
-
-VOLTA X: 19 18
-
-
-19 quebrou
-
-18 vai embora
-
-
-OS DOIS ULTIMOS PODEM QUEBRAR AO MESMO TEMPO
-
-suponha que ambos cheguem junto na volta 42: o código pode quebrar os dois caras
-Nesse caso, quem é o ganhador?
-
-nesse caso aqui, o nosso codigo trata o ganhador como o que tiver o numero maior
-
-Ciclistas quebrados saem do rank, então eles perdem???
-
+- Refatorar o código
 
 
 

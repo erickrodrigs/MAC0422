@@ -12,6 +12,7 @@ typedef struct cyclist {
   int velocity;
   int laps;
   int broken;
+  int eliminated;
   int finished;
 } Cyclist;
 
@@ -294,7 +295,7 @@ void judge(int remainingCyclists, int *sortedCyclists) {
   int lap = 1, line, column;
   int currentCyclist;
   int brokenProbability;
-  int someoneHasBroken;
+  int someoneHasLeft;
   //int maximumVelocity;
   int lapCompleted;
 
@@ -324,18 +325,18 @@ void judge(int remainingCyclists, int *sortedCyclists) {
     //printRank(sortedCyclists, n - 1);
 
     for (int i = 0; i < n; i++) {
-      if (!cyclists[i].broken)
+      if (!cyclists[i].broken && !cyclists[i].eliminated)
         printf("Ciclista %d fez %d voltas\n", cyclists[i].id, cyclists[i].laps);
     }
 
-    someoneHasBroken = 0;
+    someoneHasLeft = 0;
 
     // verifica se o ciclista quebrou
     if (remainingCyclists > 5) {
       for (int i = 0; i < n; i++) {
         brokenProbability = (rand() % 100) + 1;
 
-        if (cyclists[i].laps == 0 || cyclists[i].broken || cyclists[i].finished)
+        if (cyclists[i].laps == 0 || cyclists[i].broken || cyclists[i].eliminated || cyclists[i].finished)
           continue;
         
         if (brokenProbability <= 5 && cyclists[i].laps % 6 == 0 && cyclists[i].columnPosition == 0) {
@@ -349,7 +350,7 @@ void judge(int remainingCyclists, int *sortedCyclists) {
 
           track[cyclists[i].linePosition][cyclists[i].columnPosition] = 0;
 
-          someoneHasBroken = 1;
+          someoneHasLeft = 1;
 
           if (remainingCyclists == 5)
             break;
@@ -377,7 +378,7 @@ Acontece quando  o último passa na coluna 0.
     lapCompleted = 1;
 
     for (int i = 0; i < n; i++)
-      if (cyclists[i].broken == 0 && cyclists[i].laps < lap) {
+      if (!cyclists[i].broken && !cyclists[i].eliminated && cyclists[i].laps < lap) {
         lapCompleted = 0;
         break;
       }
@@ -392,7 +393,7 @@ Acontece quando  o último passa na coluna 0.
 
         if (cyclists[top(stacks[lap])].columnPosition == 0) { //será que tem algum problema?
           currentCyclist = top(stacks[lap]);
-          cyclists[currentCyclist].broken = 1;
+          cyclists[currentCyclist].eliminated = 1;
           line = cyclists[currentCyclist].linePosition;
           column = cyclists[currentCyclist].columnPosition;
 
@@ -403,20 +404,20 @@ Acontece quando  o último passa na coluna 0.
           track[line][column] = 0;
           //elimina o topo da pilha da pista = cancela, printf, zerar a posição, diminuir remaining cyclists, broken = 1
           
-          someoneHasBroken = 1;
+          someoneHasLeft = 1;
         }
       }
       lap += 1;
     }
 
     if (remainingCyclists > 1) {
-      if (someoneHasBroken) {
+      if (someoneHasLeft) {
         pthread_barrier_destroy(&barrier);
         pthread_barrier_init(&barrier, NULL, remainingCyclists + 1);
       }
 
       for (int i = 0; i < n; i++)
-        if (!cyclists[i].broken)
+        if (!cyclists[i].broken && !cyclists[i].eliminated)
           canContinue[i] = 1;
     }
     else {
@@ -481,6 +482,7 @@ int main(int argc, char ** argv) {
       cyclists[currentCyclist - 1].velocity = 1;
       cyclists[currentCyclist - 1].laps = 0;
       cyclists[currentCyclist - 1].broken = 0;
+      cyclists[currentCyclist - 1].eliminated = 0;
       cyclists[currentCyclist - 1].id = currentCyclist;
       cyclists[currentCyclist - 1].finished = 0;
       i += 1;
@@ -504,6 +506,7 @@ int main(int argc, char ** argv) {
       cyclists[currentCyclist - 1].velocity = 1;
       cyclists[currentCyclist - 1].laps = 0;
       cyclists[currentCyclist - 1].broken = 0;
+      cyclists[currentCyclist - 1].eliminated = 0;
       cyclists[currentCyclist - 1].id = currentCyclist;
       cyclists[currentCyclist - 1].finished = 0;
       i += 1;
