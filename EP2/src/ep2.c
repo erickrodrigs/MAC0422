@@ -392,6 +392,27 @@ void initMutex() {
   }
 }
 
+void generateOutput() {
+  long int memoryUsage = 0, currentNumber;
+  struct timeval currentTime;
+  double finishTime;
+  FILE * memoryUsageFile = fopen("/proc/self/statm", "r");
+  FILE * programLogFile = fopen("programLog.txt", "a");
+
+  while (fscanf(memoryUsageFile,"%ld", &currentNumber) != EOF)
+    memoryUsage += currentNumber;
+
+  gettimeofday(&currentTime, NULL);
+
+  finishTime = currentTime.tv_sec - start.tv_sec;
+  finishTime += (currentTime.tv_usec - start.tv_usec) / 1e6;
+ 
+  fprintf(programLogFile, "%ld %lf\n", memoryUsage, finishTime);
+
+  fclose(programLogFile);
+  fclose(memoryUsageFile);
+}
+
 void freeAllocatedMemory(int *ids) {
   for (int i = 0; i < 10; i++) {
     for (int j = 0; j < d; j++) {
@@ -471,6 +492,8 @@ int main(int argc, char ** argv) {
   printf("\nCLASSIFICAÇÃO FINAL:\n");
   mergeSort(ids, 0, n - 1, cyclists);
   printRank(ids, n - 1);
+
+  generateOutput();
 
   freeAllocatedMemory(ids);
 
