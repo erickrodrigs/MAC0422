@@ -392,12 +392,12 @@ void initMutex() {
   }
 }
 
-void generateOutput() {
+void generateOutput(char *name) {
   long int memoryUsage = 0, currentNumber;
   struct timeval currentTime;
   double finishTime;
   FILE * memoryUsageFile = fopen("/proc/self/statm", "r");
-  FILE * programLogFile = fopen("programLog.txt", "a");
+  FILE * programLogFile = fopen(name, "a");
 
   while (fscanf(memoryUsageFile,"%ld", &currentNumber) != EOF)
     memoryUsage += currentNumber;
@@ -448,11 +448,17 @@ void freeAllocatedMemory(int *ids) {
 
 int main(int argc, char ** argv) {
   int *ids;
-
-  debug = (argc == 4) ? 1 : 0;
+  char *path = NULL;
 
   d = atoi(argv[1]);
   n = atoi(argv[2]);
+
+  for (int i = 3; i < argc; i++) {
+    if (argv[i][0] == '-') 
+      debug = 1;
+    else 
+      path = argv[i];
+  }
 
   srand(time(NULL));
   gettimeofday(&start, NULL);
@@ -493,7 +499,8 @@ int main(int argc, char ** argv) {
   mergeSort(ids, 0, n - 1, cyclists);
   printRank(ids, n - 1);
 
-  generateOutput();
+  if (path)
+    generateOutput(path);
 
   freeAllocatedMemory(ids);
 
