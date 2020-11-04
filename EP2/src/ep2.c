@@ -387,14 +387,27 @@ void initMutex() {
 }
 
 void generateOutput(char *name) {
-  long int memoryUsage = 0, currentNumber;
+  int i, j;
+  size_t size;
+  long int memoryUsage = 0;
   struct timeval currentTime;
   double finishTime;
-  FILE * memoryUsageFile = fopen("/proc/self/statm", "r");
+  char *line;
+
+  
+  FILE * memoryUsageFile = fopen("/proc/self/status", "r");
   FILE * programLogFile = fopen(name, "a");
 
-  while (fscanf(memoryUsageFile,"%ld", &currentNumber) != EOF)
-    memoryUsage += currentNumber;
+  for (i = 0; i < 23; i++)
+    getline(&line, &size, memoryUsageFile);
+
+  for (i = 0; line[i] > '9' || line[i] < '0'; i++);
+
+  for (j = i + 1; line[j] <= '9' && line[j] >= '0'; j++);
+  line[j] = '\0';
+  line = line + i;
+  
+  memoryUsage = atol(line);
 
   gettimeofday(&currentTime, NULL);
 
