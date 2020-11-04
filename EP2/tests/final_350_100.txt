@@ -1,0 +1,6 @@
+Quantidade média de uso de memória foi 2053452.133333
+Quantidade média de tempo de execução foi 3270.785242
+
+Uso de memória: Lado esquerdo: 2053439.790873 lado direito: 2053464.475794
+Tempo de execução: Lado esquerdo: 3176.529642 lado direito: 3365.040842
+
