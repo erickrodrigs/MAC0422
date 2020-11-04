@@ -71,9 +71,9 @@ int randomVelocity(int id) {
   }
 
   if (value > probability)
-    return 2; // 60km/h
+    return 2;
   else
-    return 1; // 30km/h
+    return 1;
 }
 
 void changePosition(int cyclist) {
@@ -166,7 +166,7 @@ void * thread(void * id) {
       canContinue[cyclist] = 0;
 
       pthread_barrier_wait(&barrier);
-      //processamento do juiz
+
       while (!canContinue[cyclist])
         usleep(100);
 
@@ -211,18 +211,14 @@ void judge(int remainingCyclists) {
     for (int i = 0; i < n; i++) {
       if (cyclists[i].velocity == 3)
         maximumVelocity = 1;
-    }//é possível checar lá em cima também
-    
-    // printf("%d\n", maximumVelocity);
+    }
 
     if (maximumVelocity)
       usleep(20000);
     else
       usleep(60000);
-    
 
     pthread_barrier_wait(&barrier);
-      //change position, canContinue= 0;
     pthread_barrier_wait(&barrier);
 
     if (debug)
@@ -230,7 +226,6 @@ void judge(int remainingCyclists) {
 
     someoneHasLeft = 0;
 
-    // verifica se o ciclista quebrou
     if (remainingCyclists > 5) {
       for (int i = 0; i < n; i++) {
         brokenProbability = (rand() % 100) + 1;
@@ -271,10 +266,10 @@ void judge(int remainingCyclists) {
       printStack(stacks[lap]);
 
       if (lap % 2 == 0){
-        while (cyclists[top(stacks[lap])].broken || cyclists[top(stacks[lap])].eliminated) //será que tem algum problema?
+        while (cyclists[top(stacks[lap])].broken || cyclists[top(stacks[lap])].eliminated)
           stacks[lap] = pop(stacks[lap]);
 
-        if (cyclists[top(stacks[lap])].columnPosition == 0) { //será que tem algum problema?
+        if (cyclists[top(stacks[lap])].columnPosition == 0) {
           currentCyclist = top(stacks[lap]);
           stacks[lap] = pop(stacks[lap]);
           cyclists[currentCyclist].eliminated = 1;
@@ -286,8 +281,7 @@ void judge(int remainingCyclists) {
           remainingCyclists--;
 
           track[line][column] = 0;
-          //elimina o topo da pilha da pista = cancela, printf, zerar a posição, diminuir remaining cyclists, broken = 1
-          
+    
           someoneHasLeft = 1;
         }
       }
