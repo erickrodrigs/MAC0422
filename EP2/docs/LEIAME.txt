@@ -1,0 +1,7 @@
+Para compilar o EP, basta executar o comando make no diretório raiz do EP.
+A execução do EP é feita da seguinte maneira:
+
+./ep2 d n -d <arquivo_de_saida>
+
+A flag -d (debug) é opcional, assim como o <arquivo_de_saida>. Esse arquivo de saída contém somente os dados de uso de memória e tempo de execução do EP, respectivamente, e foi útil quando fizemos os testes para o EP. Preferimos deixar no código para que o professor consiga ver como obtivemos esses dados (tempo e memória).
+
