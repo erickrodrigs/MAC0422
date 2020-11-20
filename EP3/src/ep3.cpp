@@ -27,6 +27,17 @@ void openFAT() {
 
 }
 
+void saveBITMAP() {
+  fseek(disk, 0, 0);
+  for (int i = 0; i < BLOCKS; i++)
+    fprintf(disk, "%d", bitMap[i]);
+}
+
+void saveFAT() {
+  for (int i = 0; i < BLOCKS; i++)
+    fprintf(disk, "%6d", FAT[i]);
+}
+
 void createFileSystem(string path) {
   
   time_t now;
@@ -52,7 +63,7 @@ void createFileSystem(string path) {
   for (int i = 0; i < 3; i++)
     fprintf(disk, "%s", date);
 
-  fprintf(disk, "%5d< >", 0);
+  fprintf(disk, "%5d< > ", 0);
   fclose(disk);
 }
 
@@ -65,95 +76,124 @@ int searchFreeBlock() {
   return i == BLOCKS ? -1 : i;  
 }
 
-void mkdir(string path) {
-  vector<string> directories;
+bool findFile(string file, char type) {
+  bool found = false;
+  char metaData[20];
+
+  fscanf(disk, "%s", metaData);
+  while (!found) {
+
+    fscanf(disk, "%s", metaData);
+    string name(metaData);
+
+    if (name != ">") {
+      fscanf(disk, "%s", metaData);
+      fscanf(disk, "%s", metaData);
+
+      //A parte de baixo tem que mudar
+      if (metaData[0] == type) {
+        if (name == file)
+          found = true;//retorna alguma coisa
+        else 
+          fseek(disk, ftell(disk) + 83, 0);
+      }
+      else {
+        fseek(disk, ftell(disk) + 616 /*provisório*/, 0);
+      }
+    }
+    else break;
+  }
+
+  return found;
+}
+
+bool findDirectory(vector<string> directories) {
   int blockAddress = 0 + BEGIN;
   char metaData[20];
   int currentPosition, size, namePosition;
-  bool equal, found;
+  bool equal;
   time_t now;
   char *date;
 
-  if (path[0] == '/') {
+  
+  fseek(disk, blockAddress, 0);
+  for (int i = 0; i < directories.size() - 1; i++) {
+    currentPosition = 1;
+
+    if (findFile(directories[i], 'D')) {
+      //fseek para o bloco do diretório
+      fseek(disk, ftell(disk) + 78, 0);
+      fscanf(disk, "%d", &blockAddress);
+      blockAddress *= SIZEOFBLOCK;
+      blockAddress += BEGIN;
+      fseek(disk, blockAddress, 0);
+      //blockAdress recebe o bloco do diretório
+    }
+    else {
+      return false;
+    }
+  }
+  return true;
+}
+
+vector<string> parse(string path) {
+  vector<string> directories;
+
+  if (path[0] == '/') { 
     directories.push_back("");
-    
     for (int i = 1; i < path.length(); i++) {
       if (path[i] == '/')
         directories.push_back("");
       else 
         directories.back().push_back(path[i]);
     }
+  }
+
+  return directories;
+}
+
+void mkdir(string path) {
+  vector<string> directories;
+  int blockAddress = 0;
+  time_t now;
+  char *date;
+
+  directories = parse(path);
     
-    fseek(disk, blockAddress, 0);
-    for (int i = 0; i < directories.size() - 1; i++) {
-      currentPosition = 1;
+  if (directories.size() > 0 && findDirectory(directories)) {
+
+    if (!findFile(directories.back(), 'D')) {
+      fseek(disk, ftell(disk) - 1, 0);
+      cout << directories.back();
+      fprintf(disk, "%14s%s", directories.back().c_str(), " | ");
+      fprintf(disk, "%s", "DIR | ");
+
+      now = time(0);
+      date = ctime(&now);
+      date[24] = ' ';
+
+      for (int i = 0; i < 3; i++)
+        fprintf(disk, "%s", date);
+
       
-      found = false;
+      blockAddress = searchFreeBlock();
+      if (blockAddress > 0) {
+        bitMap[blockAddress] = 0;
+        fprintf(disk, "%5d > ", blockAddress);
 
-      fscanf(disk, "%s", metaData);
-      while (metaData[0] != '>' && !found) {
-
-        fscanf(disk, "%s", metaData);
-        string name(metaData);
-        fscanf(disk, "%s", metaData);
-        fscanf(disk, "%s", metaData);
-
-        if (name == directories[i] && metaData[0] == 'D') {
-          found = true;
-          //cout << ftell(disk);
-        }
-        else {
-          fseek(disk, ftell(disk) + 83, 0); //se invadir outro bloco???
-          //fscanf(disk, "%s", metaData);
-        }
-      }
-
-      if (found) {
-        //fseek para o bloco do diretório
-        fseek(disk, ftell(disk) + 78, 0);
-        fscanf(disk, "%d", &blockAddress);
-        blockAddress *= SIZEOFBLOCK;
-        blockAddress += BEGIN;
-        fseek(disk, blockAddress, 0);
-        //blockAdress recebe o bloco do diretório
-      }
-      else {
-        cout << "Digite um caminho válido!\n";
-        return;
+        fseek(disk, blockAddress*SIZEOFBLOCK + BEGIN, 0);
+      
+        fprintf(disk, "< > ");
       }
     }
-    
-    getc(disk);
-    char character;
-    int i = 0;
-    while ((character = getc(disk)) != '>')
-      cout << character; //funciona mas é ineficiente
-    
-    fseek(disk, ftell(disk) - 1, 0);
-    cout << directories.back();
-    fprintf(disk, "%14s%s", directories.back().c_str(), " | ");
-    fprintf(disk, "%s", "DIR | ");
-
-    now = time(0);
-    date = ctime(&now);
-    date[24] = ' ';
-
-    for (int i = 0; i < 3; i++)
-      fprintf(disk, "%s", date);
-
-    
-    blockAddress = searchFreeBlock();
-    if (blockAddress > 0) {
-      bitMap[blockAddress] = 0;
-      fprintf(disk, "%5d >", blockAddress);
-
-      fseek(disk, blockAddress*SIZEOFBLOCK + BEGIN, 0);
-    
-      fprintf(disk, "< >");
-    }
+    else cout << "Já existe um diretório com esse nome\n";
   }
   else 
     cout << "Digite um caminho válido!\n";
+}
+
+void touch(string path) {
+
 }
 
 void debug() {
@@ -206,7 +246,7 @@ int main() {
 
       disk = fopen(path.c_str(), "r+");
       openBITMAP();
-      openFAT();    
+      openFAT(); 
     }
     else if (command == "cp") {}
     else if (command == "mkdir") {
@@ -215,18 +255,27 @@ int main() {
     }
     else if (command == "rmdir") {}
     else if (command == "cat") {}
-    else if (command == "touch") {}
+    else if (command == "touch") {
+      cin >> path;
+      touch(path);
+    }
     else if (command == "rm") {}
     else if (command == "ls") {}
     else if (command == "find") {}
     else if (command == "df") {}
     else if (command == "unmount") {
-      if (disk != NULL)
+      if (disk != NULL) {
+        saveBITMAP();
+        saveFAT();
         fclose(disk);
+      }
     }
     else if (command == "sai") {
-      if (disk != NULL)
+      if (disk != NULL) {
+        saveBITMAP();
+        saveFAT();
         fclose(disk);
+      }
       exit = true;
     }
     else if (command == "debug") {
