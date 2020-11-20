@@ -1,0 +1,3 @@
+/ no final no mkdir dá problema, duas barras em seguida, diretório já existente
+
+/ Problemas com diretórios de tamanho 15
