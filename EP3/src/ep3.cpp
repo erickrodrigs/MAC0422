@@ -193,6 +193,52 @@ void mkdir(string path) {
 }
 
 void touch(string path) {
+  vector<string> directories;
+  int blockAddress = 0;
+  time_t now;
+  char *date, cstring[50];
+
+  now = time(0);
+  date = ctime(&now);
+  date[24] = ' ';
+
+  directories = parse(path);
+
+  if (directories.size() > 0 && findDirectory(directories)) {
+
+    if (!findFile(directories.back(), 'A')) {
+      fseek(disk, ftell(disk) - 1, 0);
+      cout << directories.back();
+      fprintf(disk, "%14s%s", directories.back().c_str(), " | ");
+      fprintf(disk, "%s", "ARQ | ");
+      fprintf(disk, "%9d | ", 0);
+
+      for (int i = 0; i < 3; i++)
+        fprintf(disk, "%s", date);
+
+      
+      blockAddress = searchFreeBlock();
+      if (blockAddress > 0) {
+        bitMap[blockAddress] = 0;
+        fprintf(disk, "%5d > ", blockAddress);
+
+        fseek(disk, blockAddress*SIZEOFBLOCK + BEGIN, 0);
+      
+        fprintf(disk, "< > ");
+      }
+    }
+    else {
+      fscanf(disk, "%s" , cstring);
+      fscanf(disk, "%s", cstring);
+      fscanf(disk, "%s", cstring);
+      fprintf(disk, " ");
+
+      fprintf(disk, "%s", date);
+
+    }
+  }
+  else 
+    cout << "Digite um caminho válido!\n";
 
 }
 
