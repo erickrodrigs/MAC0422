@@ -79,6 +79,7 @@ int searchFreeBlock() {
 bool findFile(string file, char type) {
   bool found = false;
   char metaData[20];
+  int jump;
 
   fscanf(disk, "%s", metaData);
   while (!found) {
@@ -90,16 +91,12 @@ bool findFile(string file, char type) {
       fscanf(disk, "%s", metaData);
       fscanf(disk, "%s", metaData);
 
-      //A parte de baixo tem que mudar
-      if (metaData[0] == type) {
-        if (name == file)
-          found = true;//retorna alguma coisa
-        else 
-          fseek(disk, ftell(disk) + 83, 0);
-      }
-      else {
-        fseek(disk, ftell(disk) + 616 /*provisório*/, 0);
-      }
+      jump = metaData[0] == 'D' ? 83 : 95;
+
+      if (metaData[0] == type && name == file)
+        found = true;
+      else
+        fseek(disk, ftell(disk) + jump, 0);
     }
     else break;
   }
@@ -192,9 +189,10 @@ void mkdir(string path) {
     cout << "Digite um caminho válido!\n";
 }
 
-void touch(string path) {
+int touch(string path) {
   vector<string> directories;
   int blockAddress = 0;
+  int sizeAddress = -1;
   time_t now;
   char *date, cstring[50];
 
@@ -211,6 +209,7 @@ void touch(string path) {
       cout << directories.back();
       fprintf(disk, "%14s%s", directories.back().c_str(), " | ");
       fprintf(disk, "%s", "ARQ | ");
+      sizeAddress = ftell(disk);
       fprintf(disk, "%9d | ", 0);
 
       for (int i = 0; i < 3; i++)
@@ -229,6 +228,7 @@ void touch(string path) {
     }
     else {
       fscanf(disk, "%s" , cstring);
+      sizeAddress = ftell(disk) + 1;
       fscanf(disk, "%s", cstring);
       fscanf(disk, "%s", cstring);
       fprintf(disk, " ");
@@ -239,7 +239,40 @@ void touch(string path) {
   }
   else 
     cout << "Digite um caminho válido!\n";
+  
+  return sizeAddress;
+}
 
+void cp(string origin, string destiny) {
+  // Abrir arquivo, copiar tudo de dentro dele
+  FILE *originFile;
+  char character;
+  int fileSize = 0;
+  int blockAddress;
+  int sizeAddress = touch(destiny);
+
+  if (sizeAddress == -1) {
+    cout << "Digite um caminho de destino válido!\n";
+    return;
+  }
+
+  originFile = fopen(origin.c_str(), "r");
+
+  fseek(disk, sizeAddress + 86, 0);
+  fscanf(disk, "%d", &blockAddress);
+  fseek(disk, blockAddress * SIZEOFBLOCK + BEGIN + 2, 0);
+
+  while ((character = getc(originFile)) != EOF) {
+    fprintf(disk, "%c", character);
+    fileSize++;
+  }
+
+  fprintf(disk, " >");
+
+  fseek(disk, sizeAddress, 0);
+  fprintf(disk, "%9d", fileSize);
+  
+  fclose(originFile);
 }
 
 void debug() {
@@ -274,7 +307,7 @@ void debug() {
 
 int main() {
   bool exit = false;
-  string command, path;
+  string command, path, origin;
   disk = NULL;
   
   while (!exit) {
@@ -294,7 +327,10 @@ int main() {
       openBITMAP();
       openFAT(); 
     }
-    else if (command == "cp") {}
+    else if (command == "cp") {
+      cin >> origin >> path;
+      cp(origin, path);
+    }
     else if (command == "mkdir") {
       cin >> path;
       mkdir(path);
