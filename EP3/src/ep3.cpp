@@ -313,6 +313,70 @@ void cat(string path) {
     cout << "Digite um caminho válido!\n";
 }
 
+void ls(string path) {
+  vector<string> directories;
+  int blockAddress = 0;
+  int fileSize;
+  time_t now;
+  char *date, cstring[50];
+
+  now = time(0);
+  date = ctime(&now);
+  date[24] = ' ';
+
+  directories = parse(path);
+
+  if (directories.size() > 0 && findDirectory(directories)) {
+    if (findFile(directories.back(), 'D')) {
+      fscanf(disk, "%s" , cstring);
+      fprintf(disk, " ");
+      fprintf(disk, "%s", date);
+
+      fseek(disk, ftell(disk) + 50, 0);
+
+      fscanf(disk, "%d", &blockAddress);
+      fseek(disk, blockAddress * SIZEOFBLOCK + BEGIN + 1, 0);
+
+      fscanf(disk, "%s", cstring);
+
+      while (cstring[0] != '>') {
+        cout << cstring << " ";
+        fscanf(disk, "%s", cstring);
+        fscanf(disk, "%s", cstring);
+
+        if (cstring[0] == 'D') {
+          cout << "(diretório)";
+        }
+        else {
+          fscanf(disk, "%s", cstring);
+          fscanf(disk, "%d", &fileSize);
+          cout << " | Tamanho: " << fileSize << "B";
+        }
+
+        fscanf(disk, "%s", cstring);
+
+        for (int i = 0; i < 5; i++)
+          fscanf(disk, "%s", cstring);
+
+        cout << " | Data de modificação: ";
+        for (int i = 0; i < 5; i++) {
+          fscanf(disk, "%s", cstring);
+          cout << cstring << " ";
+        }
+
+        cout << endl;
+        for (int i = 0; i < 7; i++)
+          fscanf(disk, "%s", cstring);
+      }
+    }
+    else {
+      cout << "Arquivo não encontrado!\n";
+    }
+  }
+  else 
+    cout << "Digite um caminho válido!\n";
+}
+
 void debug() {
 
   while (true) {
@@ -383,7 +447,10 @@ int main() {
       touch(path);
     }
     else if (command == "rm") {}
-    else if (command == "ls") {}
+    else if (command == "ls") {
+      cin >> path;
+      ls(path);
+    }
     else if (command == "find") {}
     else if (command == "df") {}
     else if (command == "unmount") {
