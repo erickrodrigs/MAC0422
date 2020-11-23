@@ -6,7 +6,7 @@
 
 # Ignore .o files
 *.o
-
+*.disk
 # Ignore valgrind output
 valgrind-out.txt
 

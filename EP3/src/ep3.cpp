@@ -275,6 +275,44 @@ void cp(string origin, string destiny) {
   fclose(originFile);
 }
 
+void cat(string path) {
+  vector<string> directories;
+  int blockAddress = 0;
+  int fileSize;
+  time_t now;
+  char *date, cstring[50];
+
+  now = time(0);
+  date = ctime(&now);
+  date[24] = ' ';
+
+  directories = parse(path);
+
+  if (directories.size() > 0 && findDirectory(directories)) {
+    if (findFile(directories.back(), 'A')) {
+      fscanf(disk, "%s" , cstring);
+      fscanf(disk, "%d", &fileSize);
+      fscanf(disk, "%s", cstring);
+      fprintf(disk, " ");
+
+      fprintf(disk, "%s", date);
+
+      fseek(disk, ftell(disk) + 50, 0);
+
+      fscanf(disk, "%d", &blockAddress);
+      fseek(disk, blockAddress * SIZEOFBLOCK + BEGIN + 2, 0);
+
+      for (int i = 0; i < fileSize; i++)
+        cout << (char) getc(disk);
+    }
+    else {
+      cout << "Arquivo não encontrado!\n";
+    }
+  }
+  else 
+    cout << "Digite um caminho válido!\n";
+}
+
 void debug() {
 
   while (true) {
@@ -336,7 +374,10 @@ int main() {
       mkdir(path);
     }
     else if (command == "rmdir") {}
-    else if (command == "cat") {}
+    else if (command == "cat") {
+      cin >> path;
+      cat(path);
+    }
     else if (command == "touch") {
       cin >> path;
       touch(path);
