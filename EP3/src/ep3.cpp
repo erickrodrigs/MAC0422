@@ -472,6 +472,33 @@ void ls(string path) {
     cout << "Digite um caminho válido!\n";
 }
 
+void rm(string path) {
+  vector<string> directories;
+  int blockAddress = 0;
+  int fileSize, numberOfBlocks, read;
+  time_t now;
+  char *date, cstring[50];
+
+  now = time(0);
+  date = ctime(&now);
+  date[24] = ' ';
+
+  directories = parse(path);
+
+  if (directories.size() > 0 && findDirectory(directories)) {
+    if (findFile(directories.back(), 'A')) {
+      fseek(disk, ftell(disk) + 89, 0);
+      fscanf(disk, "%d", &blockAddress);
+      freeBlocks(blockAddress);
+    }
+    else {
+      cout << "Arquivo não encontrado!\n";
+    }
+  }
+  else 
+    cout << "Digite um caminho válido!\n";
+}
+
 void debug() {
 
   while (true) {
@@ -541,7 +568,10 @@ int main() {
       cin >> path;
       touch(path);
     }
-    else if (command == "rm") {}
+    else if (command == "rm") {
+      cin >> path;
+      rm(path);
+    }
     else if (command == "ls") {
       cin >> path;
       ls(path);
