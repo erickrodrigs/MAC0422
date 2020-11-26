@@ -24,7 +24,6 @@ void openFAT() {
     fscanf(disk, "%d", &address);
     FAT.push_back(address);
   }
-
 }
 
 void saveBITMAP() {
@@ -38,8 +37,7 @@ void saveFAT() {
     fprintf(disk, "%6d", FAT[i]);
 }
 
-void createFileSystem(string path) {
-  
+void createFileSystem(string path) {  
   time_t now;
   char *date;
   disk = fopen(path.c_str(), "w");
@@ -76,10 +74,31 @@ int searchFreeBlock() {
   return i == BLOCKS ? -1 : i;  
 }
 
+void freeBlocks(int currentBlock) {
+  int aux;
+
+  if (currentBlock != -1) {
+    bitMap[currentBlock] = 1;
+    aux = currentBlock;
+    currentBlock = FAT[currentBlock];
+    FAT[aux] = - 1;
+    freeBlocks(currentBlock);
+  }
+}
+
 bool findFile(string file, char type) {
   bool found = false;
   char metaData[20];
   int jump;
+  int blockAddress, currentBlock;
+
+  blockAddress = ftell(disk);
+  currentBlock = (blockAddress - BEGIN)/SIZEOFBLOCK;
+  
+  if (file == "") {
+    fseek(disk, 178957, 0);
+    return true;
+  }
 
   fscanf(disk, "%s", metaData);
   while (!found) {
@@ -94,9 +113,16 @@ bool findFile(string file, char type) {
       jump = metaData[0] == 'D' ? 83 : 95;
 
       if (metaData[0] == type && name == file)
-        found = true;
-      else
+        found = true;  
+      else {
         fseek(disk, ftell(disk) + jump, 0);
+
+        if (ftell(disk) - blockAddress + 119 > SIZEOFBLOCK) {
+          currentBlock = FAT[currentBlock];
+          blockAddress = currentBlock*SIZEOFBLOCK + BEGIN;
+          fseek(disk, blockAddress, 0);
+        }
+      }
     }
     else break;
   }
@@ -149,9 +175,9 @@ vector<string> parse(string path) {
   return directories;
 }
 
-void mkdir(string path) {
+void mkdir(string path) { //um  ou dois blocos livres
   vector<string> directories;
-  int blockAddress = 0;
+  int blockAddress = 0, currentBlock;
   time_t now;
   char *date;
 
@@ -161,6 +187,16 @@ void mkdir(string path) {
 
     if (!findFile(directories.back(), 'D')) {
       fseek(disk, ftell(disk) - 1, 0);
+
+      if ((ftell(disk) - BEGIN)%SIZEOFBLOCK + 1 + 119 > SIZEOFBLOCK) {
+        blockAddress = ftell(disk);
+        currentBlock = (blockAddress - BEGIN)/SIZEOFBLOCK;
+        FAT[currentBlock] = searchFreeBlock(); //depois fazer tratamento do erro
+        currentBlock = FAT[currentBlock];
+        bitMap[currentBlock] = 0;
+        blockAddress = currentBlock*SIZEOFBLOCK + BEGIN;
+        fseek(disk, blockAddress, 0);
+      }
       cout << directories.back();
       fprintf(disk, "%14s%s", directories.back().c_str(), " | ");
       fprintf(disk, "%s", "DIR | ");
@@ -189,10 +225,11 @@ void mkdir(string path) {
     cout << "Digite um caminho válido!\n";
 }
 
-int touch(string path) {
+int touch(string path) {//zero, um  ou dois blocos livres
   vector<string> directories;
   int blockAddress = 0;
   int sizeAddress = -1;
+  int currentBlock;
   time_t now;
   char *date, cstring[50];
 
@@ -206,6 +243,17 @@ int touch(string path) {
 
     if (!findFile(directories.back(), 'A')) {
       fseek(disk, ftell(disk) - 1, 0);
+
+      if ((ftell(disk) - BEGIN)%SIZEOFBLOCK + 1 + 119 > SIZEOFBLOCK) {
+        blockAddress = ftell(disk);
+        currentBlock = (blockAddress - BEGIN)/SIZEOFBLOCK;
+        FAT[currentBlock] = searchFreeBlock(); //depois fazer tratamento do erro
+        currentBlock = FAT[currentBlock];
+        bitMap[currentBlock] = 0;
+        blockAddress = currentBlock*SIZEOFBLOCK + BEGIN;
+        fseek(disk, blockAddress, 0);
+      }
+
       cout << directories.back();
       fprintf(disk, "%14s%s", directories.back().c_str(), " | ");
       fprintf(disk, "%s", "ARQ | ");
@@ -247,7 +295,7 @@ void cp(string origin, string destiny) {
   // Abrir arquivo, copiar tudo de dentro dele
   FILE *originFile;
   char character;
-  int fileSize = 0;
+  int fileSize = 0, write;
   int blockAddress;
   int sizeAddress = touch(destiny);
 
@@ -260,14 +308,39 @@ void cp(string origin, string destiny) {
 
   fseek(disk, sizeAddress + 86, 0);
   fscanf(disk, "%d", &blockAddress);
+  freeBlocks(FAT[blockAddress]);
+  FAT[blockAddress] = -1;
   fseek(disk, blockAddress * SIZEOFBLOCK + BEGIN + 2, 0);
 
+  write = SIZEOFBLOCK - 2;
   while ((character = getc(originFile)) != EOF) {
+    if (write == 0) {
+      FAT[blockAddress] = searchFreeBlock();
+      blockAddress = FAT[blockAddress];
+      bitMap[blockAddress] = 0;
+      write = SIZEOFBLOCK;
+    }
+
     fprintf(disk, "%c", character);
     fileSize++;
+    write--;
   }
 
-  fprintf(disk, " >");
+  if (write >= 2)
+    fprintf(disk, "> ");
+  else if (write == 1) {
+    fprintf(disk, ">");
+    FAT[blockAddress] = searchFreeBlock();
+    blockAddress = FAT[blockAddress];
+    bitMap[blockAddress] = 0;
+    fprintf(disk, " ");
+  }
+  else {
+    FAT[blockAddress] = searchFreeBlock();
+    blockAddress = FAT[blockAddress];
+    bitMap[blockAddress] = 0;
+    fprintf(disk, "> ");
+  }
 
   fseek(disk, sizeAddress, 0);
   fprintf(disk, "%9d", fileSize);
@@ -278,7 +351,7 @@ void cp(string origin, string destiny) {
 void cat(string path) {
   vector<string> directories;
   int blockAddress = 0;
-  int fileSize;
+  int fileSize, numberOfBlocks, read;
   time_t now;
   char *date, cstring[50];
 
@@ -302,8 +375,20 @@ void cat(string path) {
       fscanf(disk, "%d", &blockAddress);
       fseek(disk, blockAddress * SIZEOFBLOCK + BEGIN + 2, 0);
 
-      for (int i = 0; i < fileSize; i++)
-        cout << (char) getc(disk);
+      numberOfBlocks = (fileSize + 4)/SIZEOFBLOCK;
+      numberOfBlocks += (fileSize + 4)%SIZEOFBLOCK != 0;
+      read = fileSize > SIZEOFBLOCK - 2 ? SIZEOFBLOCK - 2 : fileSize;
+
+      for (int i = 0; i < numberOfBlocks; i++) {
+        for (int j = 0; j < read; j++) {
+          cout << (char) getc(disk);
+        }
+
+        fileSize -= read;
+        read = fileSize > SIZEOFBLOCK ? SIZEOFBLOCK : fileSize;
+        blockAddress = FAT[blockAddress];
+        fseek(disk, blockAddress * SIZEOFBLOCK + BEGIN, 0);
+      }
     }
     else {
       cout << "Arquivo não encontrado!\n";
@@ -315,7 +400,7 @@ void cat(string path) {
 
 void ls(string path) {
   vector<string> directories;
-  int blockAddress = 0;
+  int blockAddress = 0, currentBlock;
   int fileSize;
   time_t now;
   char *date, cstring[50];
@@ -327,6 +412,7 @@ void ls(string path) {
   directories = parse(path);
 
   if (directories.size() > 0 && findDirectory(directories)) {
+    
     if (findFile(directories.back(), 'D')) {
       fscanf(disk, "%s" , cstring);
       fprintf(disk, " ");
@@ -365,8 +451,17 @@ void ls(string path) {
         }
 
         cout << endl;
-        for (int i = 0; i < 7; i++)
+        for (int i = 0; i < 6; i++)
           fscanf(disk, "%s", cstring);
+
+        if ((ftell(disk) - BEGIN)%SIZEOFBLOCK + 1 + 119 > SIZEOFBLOCK) {
+          blockAddress = ftell(disk);
+          currentBlock = (blockAddress - BEGIN)/SIZEOFBLOCK;
+          currentBlock = FAT[currentBlock];
+          blockAddress = currentBlock*SIZEOFBLOCK + BEGIN;
+          fseek(disk, blockAddress, 0);
+        }
+        fscanf(disk, "%s", cstring);
       }
     }
     else {
@@ -458,6 +553,7 @@ int main() {
         saveBITMAP();
         saveFAT();
         fclose(disk);
+        disk = NULL;
       }
     }
     else if (command == "sai") {
@@ -465,6 +561,7 @@ int main() {
         saveBITMAP();
         saveFAT();
         fclose(disk);
+        disk = NULL;
       }
       exit = true;
     }
