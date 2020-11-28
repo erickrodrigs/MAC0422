@@ -493,7 +493,6 @@ void rm(string path) {
   char *date, cstring[50];
   char content[5000];
   int removedFilePosition;
-  int position;
   int endPosition = 3946;
   bool firstBlock = true;
 
@@ -505,7 +504,6 @@ void rm(string path) {
 
   if (directories.size() > 0 && findDirectory(directories)) {
     if (findFile(directories.back(), 'A')) {
-      position = ftell(disk);
       currentBlock = (ftell(disk) - BEGIN) / SIZEOFBLOCK;
 
       removedFilePosition = ftell(disk) - 21;
@@ -549,6 +547,120 @@ void rm(string path) {
     }
     else {
       cout << "Arquivo não encontrado!\n";
+    }
+  }
+  else 
+    cout << "Digite um caminho válido!\n";
+}
+
+void listOfBlocks(string path, int block, vector<int> & blocks, vector<string> & eliminated) {
+  int blockAddress = 0, currentBlock;
+  int fileSize;
+  int position;
+  char cstring[50];
+  char typeFile;
+
+  fseek(disk, block * SIZEOFBLOCK + BEGIN + 1, 0);
+  fscanf(disk, "%s", cstring);
+
+  while (cstring[0] != '>') {
+    eliminated.push_back(path + '/' + cstring);
+    fscanf(disk, "%s", cstring);
+    fscanf(disk, "%s", cstring);
+
+    typeFile = cstring[0];
+    fseek(disk, ftell(disk) + 89, 0);
+    fscanf(disk, "%d", &blockAddress);
+
+    position = ftell(disk);
+
+    if (typeFile == 'D') {
+      listOfBlocks(eliminated.back(), blockAddress, blocks, eliminated);
+    }
+
+    blocks.push_back(blockAddress);
+
+    fseek(disk, position, 0);
+
+    if ((ftell(disk) - BEGIN) % SIZEOFBLOCK + 1 + 119 > SIZEOFBLOCK) {
+      blockAddress = ftell(disk);
+      currentBlock = (blockAddress - BEGIN) / SIZEOFBLOCK;
+      currentBlock = FAT[currentBlock];
+      blockAddress = currentBlock * SIZEOFBLOCK + BEGIN;
+      fseek(disk, blockAddress, 0);
+      fscanf(disk, "%s", cstring);
+    }
+
+    fscanf(disk, "%s", cstring);
+  }
+}
+
+void rmdir(string path) {
+  vector<string> directories, eliminated;
+  vector<int> blocks;
+  int blockAddress = 0, currentBlock;
+  int removedFilePosition = 0;
+  int endPosition = 3946;
+  char cstring[50];
+  char content[5000];
+  char typeFile;
+
+  directories = parse(path);
+
+  if (directories.size() > 0 && findDirectory(directories)) {
+    if (findFile(directories.back(), 'D')) {
+      removedFilePosition = ftell(disk) - 21;
+      fseek(disk, ftell(disk) + 89, 0);
+      fscanf(disk, "%d", &blockAddress);
+      fgets(content, SIZEOFBLOCK - (ftell(disk) - BEGIN) % SIZEOFBLOCK, disk);
+
+      eliminated.push_back(path);
+      listOfBlocks(path, blockAddress, blocks, eliminated);
+      blocks.push_back(blockAddress);
+
+      cout << "Os seguintes arquivos/diretórios serão removidos: " << endl;
+      for (int i = 0; i < (int) eliminated.size(); i++) {
+        cout << eliminated[i] << endl;
+      }
+
+      for (int i = 0; i < (int) blocks.size(); i++) {
+        freeBlocks(blocks[i]);
+      }
+
+      fseek(disk, removedFilePosition, 0);
+
+      fputs(content, disk);
+
+      while (FAT[currentBlock] != -1) {
+        fseek(disk, FAT[currentBlock] * SIZEOFBLOCK + BEGIN + 2, 0);
+
+        fgets(content, 116, disk);
+
+        fseek(disk, currentBlock * SIZEOFBLOCK + BEGIN + endPosition, 0);
+        
+        fputs(content, disk);
+
+        fprintf(disk, " > ");
+
+        fseek(disk, currentBlock * SIZEOFBLOCK + BEGIN + 117, 0);
+        fscanf(disk, "%s", cstring);
+
+        // se nao tem mais outro elemento na pasta
+        if (cstring[0] == '>') {
+          bitMap[FAT[currentBlock]] = 1;
+          FAT[currentBlock] = -1;
+        }
+        else {
+          fseek(disk, FAT[currentBlock] * SIZEOFBLOCK + BEGIN + 117, 0);
+          fgets(content, SIZEOFBLOCK - (ftell(disk) - BEGIN) % SIZEOFBLOCK, disk);
+          fseek(disk, FAT[currentBlock] * SIZEOFBLOCK + BEGIN + 1, 0);
+          fputs(content, disk);
+          currentBlock = FAT[currentBlock];
+        }
+      }
+    }
+    else {
+      cout << "Diretório não encontrado!\n";
     }
   }
   else 
@@ -627,7 +739,10 @@ int main() {
       cin >> path;
       mkdir(path);
     }
-    else if (command == "rmdir") {}
+    else if (command == "rmdir") {
+      cin >> path;
+      rmdir(path);
+    }
     else if (command == "cat") {
       cin >> path;
       cat(path);
