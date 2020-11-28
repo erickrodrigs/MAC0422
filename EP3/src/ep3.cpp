@@ -89,7 +89,7 @@ void freeBlocks(int currentBlock) {
 bool findFile(string file, char type) {
   bool found = false;
   char metaData[20];
-  int jump;
+  int jump = 95;
   int blockAddress, currentBlock;
 
   blockAddress = ftell(disk);
@@ -101,16 +101,14 @@ bool findFile(string file, char type) {
   }
 
   fscanf(disk, "%s", metaData);
-  while (!found) {
+  fscanf(disk, "%s", metaData);
 
-    fscanf(disk, "%s", metaData);
+  while (!found) {
     string name(metaData);
 
     if (name != ">") {
       fscanf(disk, "%s", metaData);
       fscanf(disk, "%s", metaData);
-
-      jump = metaData[0] == 'D' ? 83 : 95;
 
       if (metaData[0] == type && name == file)
         found = true;  
@@ -119,9 +117,15 @@ bool findFile(string file, char type) {
 
         if (ftell(disk) - blockAddress + 119 > SIZEOFBLOCK) {
           currentBlock = FAT[currentBlock];
-          blockAddress = currentBlock*SIZEOFBLOCK + BEGIN;
-          fseek(disk, blockAddress, 0);
+
+          if (currentBlock != -1) {
+            blockAddress = currentBlock*SIZEOFBLOCK + BEGIN;
+            fseek(disk, blockAddress, 0);
+            fscanf(disk, "%s", metaData);
+          }
         }
+
+        fscanf(disk, "%s", metaData);
       }
     }
     else break;
@@ -145,7 +149,7 @@ bool findDirectory(vector<string> directories) {
 
     if (findFile(directories[i], 'D')) {
       //fseek para o bloco do diretório
-      fseek(disk, ftell(disk) + 78, 0);
+      fseek(disk, ftell(disk) + 89, 0);
       fscanf(disk, "%d", &blockAddress);
       blockAddress *= SIZEOFBLOCK;
       blockAddress += BEGIN;
@@ -196,10 +200,12 @@ void mkdir(string path) { //um  ou dois blocos livres
         bitMap[currentBlock] = 0;
         blockAddress = currentBlock*SIZEOFBLOCK + BEGIN;
         fseek(disk, blockAddress, 0);
+        fprintf(disk, "< ");
       }
       cout << directories.back();
       fprintf(disk, "%14s%s", directories.back().c_str(), " | ");
       fprintf(disk, "%s", "DIR | ");
+      fprintf(disk, "%9d | ", 0);
 
       now = time(0);
       date = ctime(&now);
@@ -244,7 +250,7 @@ int touch(string path) {//zero, um  ou dois blocos livres
     if (!findFile(directories.back(), 'A')) {
       fseek(disk, ftell(disk) - 1, 0);
 
-      if ((ftell(disk) - BEGIN)%SIZEOFBLOCK + 1 + 119 > SIZEOFBLOCK) {
+      if ((ftell(disk) - BEGIN) % SIZEOFBLOCK + 1 + 119 > SIZEOFBLOCK) {
         blockAddress = ftell(disk);
         currentBlock = (blockAddress - BEGIN)/SIZEOFBLOCK;
         FAT[currentBlock] = searchFreeBlock(); //depois fazer tratamento do erro
@@ -252,6 +258,7 @@ int touch(string path) {//zero, um  ou dois blocos livres
         bitMap[currentBlock] = 0;
         blockAddress = currentBlock*SIZEOFBLOCK + BEGIN;
         fseek(disk, blockAddress, 0);
+        fprintf(disk, "< ");
       }
 
       cout << directories.back();
@@ -404,6 +411,7 @@ void ls(string path) {
   int fileSize;
   time_t now;
   char *date, cstring[50];
+  char typeFile;
 
   now = time(0);
   date = ctime(&now);
@@ -415,6 +423,8 @@ void ls(string path) {
     
     if (findFile(directories.back(), 'D')) {
       fscanf(disk, "%s" , cstring);
+      fscanf(disk, "%s", cstring);
+      fscanf(disk, "%s", cstring);
       fprintf(disk, " ");
       fprintf(disk, "%s", date);
 
@@ -430,12 +440,14 @@ void ls(string path) {
         fscanf(disk, "%s", cstring);
         fscanf(disk, "%s", cstring);
 
-        if (cstring[0] == 'D') {
+        typeFile = cstring[0];
+        fscanf(disk, "%s", cstring);
+        fscanf(disk, "%d", &fileSize);
+
+        if (typeFile == 'D') {
           cout << "(diretório)";
         }
         else {
-          fscanf(disk, "%s", cstring);
-          fscanf(disk, "%d", &fileSize);
           cout << " | Tamanho: " << fileSize << "B";
         }
 
@@ -460,6 +472,7 @@ void ls(string path) {
           currentBlock = FAT[currentBlock];
           blockAddress = currentBlock*SIZEOFBLOCK + BEGIN;
           fseek(disk, blockAddress, 0);
+          fscanf(disk, "%s", cstring);
         }
         fscanf(disk, "%s", cstring);
       }
@@ -474,10 +487,15 @@ void ls(string path) {
 
 void rm(string path) {
   vector<string> directories;
-  int blockAddress = 0;
+  int blockAddress = 0, currentBlock;
   int fileSize, numberOfBlocks, read;
   time_t now;
   char *date, cstring[50];
+  char content[5000];
+  int removedFilePosition;
+  int position;
+  int endPosition = 3946;
+  bool firstBlock = true;
 
   now = time(0);
   date = ctime(&now);
@@ -487,9 +505,47 @@ void rm(string path) {
 
   if (directories.size() > 0 && findDirectory(directories)) {
     if (findFile(directories.back(), 'A')) {
+      position = ftell(disk);
+      currentBlock = (ftell(disk) - BEGIN) / SIZEOFBLOCK;
+
+      removedFilePosition = ftell(disk) - 21;
       fseek(disk, ftell(disk) + 89, 0);
       fscanf(disk, "%d", &blockAddress);
       freeBlocks(blockAddress);
+
+      fgets(content, SIZEOFBLOCK - (ftell(disk) - BEGIN) % SIZEOFBLOCK, disk);
+
+      fseek(disk, removedFilePosition, 0);
+
+      fputs(content, disk);
+
+      while (FAT[currentBlock] != -1) {
+        fseek(disk, FAT[currentBlock] * SIZEOFBLOCK + BEGIN + 2, 0);
+
+        fgets(content, 116, disk);
+
+        fseek(disk, currentBlock * SIZEOFBLOCK + BEGIN + endPosition, 0);
+        
+        fputs(content, disk);
+
+        fprintf(disk, " > ");
+
+        fseek(disk, currentBlock * SIZEOFBLOCK + BEGIN + 117, 0);
+        fscanf(disk, "%s", cstring);
+
+        // se nao tem mais outro elemento na pasta
+        if (cstring[0] == '>') {
+          bitMap[FAT[currentBlock]] = 1;
+          FAT[currentBlock] = -1;
+        }
+        else {
+          fseek(disk, FAT[currentBlock] * SIZEOFBLOCK + BEGIN + 117, 0);
+          fgets(content, SIZEOFBLOCK - (ftell(disk) - BEGIN) % SIZEOFBLOCK, disk);
+          fseek(disk, FAT[currentBlock] * SIZEOFBLOCK + BEGIN + 1, 0);
+          fputs(content, disk);
+          currentBlock = FAT[currentBlock];
+        }
+      }
     }
     else {
       cout << "Arquivo não encontrado!\n";
@@ -500,14 +556,13 @@ void rm(string path) {
 }
 
 void debug() {
-
   while (true) {
     int head = ftell(disk);
     int mode;
     string text;
     char c;
     cout << "cabeça: "<< head << endl;
-    cout << "Modo (1 cabeça, 2 escrita, 3 leitura, 4 sair): ";
+    cout << "Modo (1 cabeça, 2 escrita, 3 leitura, 4 bitmap/FAT, 5 sair): ";
     cin >> mode;
 
     if (mode == 1) {
@@ -524,6 +579,19 @@ void debug() {
       cout << "Leitura: ";
       fscanf(disk, "%c", &c);
       cout << "Saída: " << c << endl;
+    }
+    else if (mode == 4) {
+      cout << "BITMAP: " << endl;
+      for (int i = 0; i < BLOCKS; i++) {
+        cout << bitMap[i] << " ";
+      }
+
+      cout << endl << "FAT: " << endl;
+      for (int i = 0; i < BLOCKS; i++) {
+        cout << FAT[i] << " ";
+      }
+
+      cout << endl;
     }
     else break;
   }

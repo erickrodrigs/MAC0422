@@ -15,3 +15,4 @@ valgrind-out.txt
 saida*.txt
 output*.txt
 *.txt
+!tests/**/*.txt
