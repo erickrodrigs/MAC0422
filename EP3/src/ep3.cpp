@@ -595,6 +595,52 @@ void listOfBlocks(string path, int block, vector<int> & blocks, vector<string> &
   }
 }
 
+void searchFiles(string path, string fileName, int block, vector<string> & foundFiles) {
+  int blockAddress = 0, currentBlock;
+  int fileSize;
+  int position;
+  char cstring[50];
+  char typeFile;
+
+  fseek(disk, block * SIZEOFBLOCK + BEGIN + 1, 0);
+  fscanf(disk, "%s", cstring);
+
+  while (cstring[0] != '>') {
+    string currentFileName(cstring);
+
+    fscanf(disk, "%s", cstring);
+    fscanf(disk, "%s", cstring);
+
+    typeFile = cstring[0];
+    fseek(disk, ftell(disk) + 89, 0);
+    fscanf(disk, "%d", &blockAddress);
+
+    position = ftell(disk);
+
+    if (typeFile == 'D') {
+      searchFiles(path + '/' + currentFileName, fileName, blockAddress, foundFiles);
+    }
+    else {
+      if (fileName == currentFileName)//Funciona?
+        foundFiles.push_back(path + '/' + currentFileName);
+    }
+
+    fseek(disk, position, 0);
+
+    if ((ftell(disk) - BEGIN) % SIZEOFBLOCK + 1 + 119 > SIZEOFBLOCK) {
+      blockAddress = ftell(disk);
+      currentBlock = (blockAddress - BEGIN) / SIZEOFBLOCK;
+      currentBlock = FAT[currentBlock];
+      blockAddress = currentBlock * SIZEOFBLOCK + BEGIN;
+      fseek(disk, blockAddress, 0);
+      fscanf(disk, "%s", cstring);
+    }
+
+    fscanf(disk, "%s", cstring);
+  }
+
+}
+
 void rmdir(string path) {
   vector<string> directories, eliminated;
   vector<int> blocks;
@@ -667,6 +713,38 @@ void rmdir(string path) {
     cout << "Digite um caminho válido!\n";
 }
 
+void find(string path, string fileName) {
+  vector<string> directories, foundFiles;
+  int blockAddress = 0, currentBlock;
+  directories = parse(path);
+
+  if (directories.size() > 0 && findDirectory(directories)) {
+    if (findFile(directories.back(), 'D')) {
+      fseek(disk, ftell(disk) + 89, 0);
+      fscanf(disk, "%d", &blockAddress);
+      if (path == "/")
+        path = "";
+      searchFiles(path, fileName, blockAddress, foundFiles);
+      cout << "Arquivos encontrados:" << endl;
+
+      for (int i = 0; i < foundFiles.size(); i++) {
+        cout << foundFiles[i] << endl;
+      }
+      cout << endl;
+    }
+    else {
+      cout << "Diretório não encontrado!\n";
+    }
+  }
+  else 
+    cout << "Digite um caminho válido!\n";
+}
+
+void df() {
+  //a partir da raiz, usa os metadados (número de bytes) e o FAT pra determinar os blocos desperdiçados.
+  //As pastas deve ser incluídas e sobre os espaços a mais?
+}
+
 void debug() {
   while (true) {
     int head = ftell(disk);
@@ -711,7 +789,7 @@ void debug() {
 
 int main() {
   bool exit = false;
-  string command, path, origin;
+  string command, path, origin, fileName;
   disk = NULL;
   
   while (!exit) {
@@ -759,8 +837,13 @@ int main() {
       cin >> path;
       ls(path);
     }
-    else if (command == "find") {}
-    else if (command == "df") {}
+    else if (command == "find") {
+      cin >> path >> fileName;
+      find(path, fileName);
+    }
+    else if (command == "df") {
+      df();
+    }
     else if (command == "unmount") {
       if (disk != NULL) {
         saveBITMAP();
