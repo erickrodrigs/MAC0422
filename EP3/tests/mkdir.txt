@@ -118,6 +118,5 @@ mkdir /a116
 mkdir /a117 
 mkdir /a118 
 mkdir /a119 
-mkdir /a120 
-ls /
+mkdir /a120
 sai
