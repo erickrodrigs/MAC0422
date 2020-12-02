@@ -1,0 +1,10 @@
+#ifndef CONSTANTS_H
+
+#define BLOCKS 24954
+#define BITMAPBEGIN 0
+#define FATBEGIN 28000
+#define ROOTBEGIN 180000
+#define BEGIN 184000
+#define SIZEOFBLOCK 4000
+
+#endif
