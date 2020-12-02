@@ -243,39 +243,33 @@ void DiskOperations::ls(string path) {
   vector<string> directories;
   int blockAddress = 0, currentBlock;
   int fileSize, parentSizePosition;
-  time_t now;
-  char *date, cstring[50];
+  int numberOfFiles;
+  char date[26], cstring[50];
   char typeFile;
-
-  now = time(0);
-  date = ctime(&now);
-  date[24] = ' ';
 
   directories = parse(path);
 
   if (directories.size() > 0 && findDirectory(directories, parentSizePosition)) {
-    
     if (findFile(directories.back(), 'D')) {
-      fscanf(disk, "%s" , cstring);
-      fscanf(disk, "%s", cstring);
-      fscanf(disk, "%s", cstring);
-      fprintf(disk, " ");
-      fprintf(disk, "%s", date);
-
-      fseek(disk, ftell(disk) + 50, 0);
-
+      fseek(disk, ftell(disk) + 3, 0);
+      fscanf(disk, "%d", &numberOfFiles);
+      fseek(disk, ftell(disk) + 77, 0);
       fscanf(disk, "%d", &blockAddress);
+
+      currentBlock = blockAddress;
+
       fseek(disk, blockAddress * SIZEOFBLOCK + BEGIN + 1, 0);
 
-      fscanf(disk, "%s", cstring);
-
-      while (cstring[0] != '>') {
-        cout << cstring << " ";
+      for (int i = 0; i < numberOfFiles; i++){
         fscanf(disk, "%s", cstring);
+        cout << cstring << " ";
+
+        fseek(disk, ftell(disk) + 3, 0);
         fscanf(disk, "%s", cstring);
 
         typeFile = cstring[0];
-        fscanf(disk, "%s", cstring);
+
+        fseek(disk, ftell(disk) + 3, 0);
         fscanf(disk, "%d", &fileSize);
 
         if (typeFile == 'D') {
@@ -285,30 +279,18 @@ void DiskOperations::ls(string path) {
           cout << " | Tamanho: " << fileSize << "B";
         }
 
-        fscanf(disk, "%s", cstring);
+        fseek(disk, ftell(disk) + 28, 0);
+        fgets(date, 25, disk);
 
-        for (int i = 0; i < 5; i++)
-          fscanf(disk, "%s", cstring);
+        cout << " | Data de modificação: " << date << endl;
 
-        cout << " | Data de modificação: ";
-        for (int i = 0; i < 5; i++) {
-          fscanf(disk, "%s", cstring);
-          cout << cstring << " ";
-        }
-
-        cout << endl;
-        for (int i = 0; i < 6; i++)
-          fscanf(disk, "%s", cstring);
-
-        if ((ftell(disk) - BEGIN)%SIZEOFBLOCK + 1 + 119 > SIZEOFBLOCK) {
-          blockAddress = ftell(disk);
-          currentBlock = (blockAddress - BEGIN)/SIZEOFBLOCK;
+        fseek(disk, ftell(disk) + 31, 0);
+        
+        if ((i + 1) % 34 == 0 && currentBlock >= 0 && FAT[currentBlock] != -1) {
           currentBlock = FAT[currentBlock];
-          blockAddress = currentBlock*SIZEOFBLOCK + BEGIN;
-          fseek(disk, blockAddress, 0);
-          fscanf(disk, "%s", cstring);
+          blockAddress = currentBlock * SIZEOFBLOCK + BEGIN;
+          fseek(disk, blockAddress + 1, 0);
         }
-        fscanf(disk, "%s", cstring);
       }
     }
     else {

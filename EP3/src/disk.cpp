@@ -24,7 +24,7 @@ void Disk::fillInfo(int blockAddress, int total) {
   int numberOfFiles, sizeOfFile, positionBackup, currentBlock;
   char type[30];
 
-  currentBlock =  (blockAddress - BEGIN)/SIZEOFBLOCK;
+  currentBlock = (blockAddress - BEGIN)/SIZEOFBLOCK;
   fseek(disk, blockAddress + 1, 0);
   
   for (int i = 0; i < total; i++){

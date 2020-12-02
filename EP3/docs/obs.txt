@@ -7,3 +7,20 @@ CP quando o arquivo já existe deve modificar o instante de tempo de modificaç�
 / no final do caminho da problema
 
 touch, rm, mkdir, rmdir
+
+- refatorar os comandos
+- verificar datas pra cada comando (ver se precisa modificar do diretorio pai por exemplo)
+- preparar os testes pro EP (scripts)
+- preparar os slides
+
+mkdir = modifica datas de acesso e modificação do pai
+rmdir e rm = semelhante ao mkdir
+touch
+   - se já existe: altera data de modificação e acesso do arquivo (mas NAO do diretório pai)
+   - se NÃO existe: altera data de modificação e acesso do diretório pai
+
+cat = altera data de acesso do arquivo (e somente do arquivo)
+ls = nao muda nada!
+cp
+   - se já existe: altera só a data de modificação do arquivo (mas NAO do diretório pai)
+   - se não existe: altera data de modificação e acesso do diretório pai (igual ao touch)
