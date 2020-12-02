@@ -22,7 +22,7 @@ class DiskFile {
     void createFileSystem(string path);
     int searchFreeBlock();
     void freeBlocks(int currentBlock);
-    bool findFile(string file, char type);
+    bool findFile(string file, char type, int & parentSizePosition);
     bool findDirectory(vector<string> directories, int & parentSizePosition);
     vector<string> parse(string path);
     void debug(); // lembrar de remover

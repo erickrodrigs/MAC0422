@@ -111,10 +111,11 @@ void DiskFile::freeBlocks(int currentBlock) {
   }
 }
 
-bool DiskFile::findFile(string file, char type) {
+bool DiskFile::findFile(string file, char type, int & parentSizePosition) {
   bool found = false;
-  char metaData[20];
+  char name[20], fileType[20];
   int jump = 95;
+  int numberOfFiles;
   int blockAddress, currentBlock;
 
   blockAddress = ftell(disk);
@@ -125,35 +126,30 @@ bool DiskFile::findFile(string file, char type) {
     return true;
   }
 
-  fscanf(disk, "%s", metaData);
-  fscanf(disk, "%s", metaData);
+  fseek(disk, parentSizePosition, 0);
+  fscanf(disk, "%d", &numberOfFiles);
+  fseek(disk, blockAddress + 1, 0);
 
-  while (!found) {
-    string name(metaData);
+  for (int i = 0; i < numberOfFiles && !found; i++) {
+    fscanf(disk, "%s", name);
+    fseek(disk, ftell(disk) + 3, 0);
+    fscanf(disk, "%s", fileType);
 
-    if (name != ">") {
-      fscanf(disk, "%s", metaData);
-      fscanf(disk, "%s", metaData);
-
-      if (metaData[0] == type && name == file)
-        found = true;  
-      else {
-        fseek(disk, ftell(disk) + jump, 0);
-
-        if (ftell(disk) - blockAddress + 119 > SIZEOFBLOCK) {
-          currentBlock = FAT[currentBlock];
-
-          if (currentBlock != -1) {
-            blockAddress = currentBlock*SIZEOFBLOCK + BEGIN;
-            fseek(disk, blockAddress, 0);
-            fscanf(disk, "%s", metaData);
-          }
-        }
-
-        fscanf(disk, "%s", metaData);
-      }
+    if (fileType[0] == type && name == file) {
+      found = true;
     }
-    else break;
+    else if ((i + 1) % 34 == 0 && currentBlock >= 0 && FAT[currentBlock] != -1) {
+      currentBlock = FAT[currentBlock];
+      blockAddress = currentBlock * SIZEOFBLOCK + BEGIN;
+      fseek(disk, blockAddress + 1, 0);
+    }
+    else {
+      fseek(disk, ftell(disk) + jump, 0);
+    }
+  }
+
+  if (!found) {
+    fseek(disk, ftell(disk) + 2, 0);
   }
 
   return found;
@@ -166,7 +162,7 @@ bool DiskFile::findDirectory(vector<string> directories, int & parentSizePositio
 
   fseek(disk, blockAddress, 0);
   for (int i = 0; i < (int) directories.size() - 1; i++) {
-    if (findFile(directories[i], 'D')) {
+    if (findFile(directories[i], 'D', parentSizePosition)) {
       parentSizePosition = ftell(disk) + 3;
       fseek(disk, ftell(disk) + 89, 0);
       fscanf(disk, "%d", &blockAddress);

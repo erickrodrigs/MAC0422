@@ -10,8 +10,7 @@ void DiskOperations::mkdir(string path) { //um  ou dois blocos livres
   directories = parse(path);
     
   if (directories.size() > 0 && findDirectory(directories, parentSizePosition)) {
-
-    if (!findFile(directories.back(), 'D')) {
+    if (!findFile(directories.back(), 'D', parentSizePosition)) {
       fseek(disk, ftell(disk) - 1, 0);
 
       if ((ftell(disk) - BEGIN)%SIZEOFBLOCK + 1 + 119 > SIZEOFBLOCK) {
@@ -74,8 +73,7 @@ int DiskOperations::touch(string path) {//zero, um  ou dois blocos livres
   directories = parse(path);
 
   if (directories.size() > 0 && findDirectory(directories, parentSizePosition)) {
-
-    if (!findFile(directories.back(), 'A')) {
+    if (!findFile(directories.back(), 'A', parentSizePosition)) {
       fseek(disk, ftell(disk) - 1, 0);
 
       if ((ftell(disk) - BEGIN) % SIZEOFBLOCK + 1 + 119 > SIZEOFBLOCK) {
@@ -203,7 +201,7 @@ void DiskOperations::cat(string path) {
   directories = parse(path);
 
   if (directories.size() > 0 && findDirectory(directories, parentSizePosition)) {
-    if (findFile(directories.back(), 'A')) {
+    if (findFile(directories.back(), 'A', parentSizePosition)) {
       fscanf(disk, "%s" , cstring);
       fscanf(disk, "%d", &fileSize);
       fscanf(disk, "%s", cstring);
@@ -250,7 +248,7 @@ void DiskOperations::ls(string path) {
   directories = parse(path);
 
   if (directories.size() > 0 && findDirectory(directories, parentSizePosition)) {
-    if (findFile(directories.back(), 'D')) {
+    if (findFile(directories.back(), 'D', parentSizePosition)) {
       fseek(disk, ftell(disk) + 3, 0);
       fscanf(disk, "%d", &numberOfFiles);
       fseek(disk, ftell(disk) + 77, 0);
@@ -318,7 +316,7 @@ void DiskOperations::rm(string path) {
   directories = parse(path);
 
   if (directories.size() > 0 && findDirectory(directories, parentSizePosition)) {
-    if (findFile(directories.back(), 'A')) {
+    if (findFile(directories.back(), 'A', parentSizePosition)) {
       currentBlock = (ftell(disk) - BEGIN) / SIZEOFBLOCK;
 
       removedFilePosition = ftell(disk) - 21;
@@ -471,7 +469,7 @@ void DiskOperations::rmdir(string path) {
   directories = parse(path);
 
   if (directories.size() > 0 && findDirectory(directories, parentSizePosition)) {
-    if (findFile(directories.back(), 'D')) {
+    if (findFile(directories.back(), 'D', parentSizePosition)) {
       removedFilePosition = ftell(disk) - 21;
       fseek(disk, ftell(disk) + 89, 0);
       fscanf(disk, "%d", &blockAddress);
@@ -541,7 +539,7 @@ void DiskOperations::find(string path, string fileName) {
   directories = parse(path);
 
   if (directories.size() > 0 && findDirectory(directories, parentSizePosition)) {
-    if (findFile(directories.back(), 'D')) {
+    if (findFile(directories.back(), 'D', parentSizePosition)) {
       fseek(disk, ftell(disk) + 89, 0);
       fscanf(disk, "%d", &blockAddress);
       if (path == "/")
