@@ -57,7 +57,7 @@ int main() {
       cin >> path;
 
       if (disk.isMounted()) {
-        disk.touch(path);
+        disk.touch(path, true);
       }
       else {
         cout << "Disco ainda não foi montado!" << endl;

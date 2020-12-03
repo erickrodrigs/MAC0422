@@ -13,14 +13,20 @@ touch, rm, mkdir, rmdir
 - preparar os testes pro EP (scripts)
 - preparar os slides
 
-mkdir = modifica datas de acesso e modificação do pai
-rmdir e rm = semelhante ao mkdir
+OK! mkdir = modifica datas de acesso e modificação do pai
+OK! rmdir e  rm = semelhante ao mkdir
+OK! cat = altera data de acesso do arquivo (e somente do arquivo)
+OK! ls = nao muda nada!
+
+
+cp
+   - se já existe: altera só a data de modificação do arquivo (mas NAO do diretório pai)
+   - se não existe: altera data de modificação e acesso do diretório pai (igual ao touch)
+
+
 touch
    - se já existe: altera data de modificação e acesso do arquivo (mas NAO do diretório pai)
    - se NÃO existe: altera data de modificação e acesso do diretório pai
 
-cat = altera data de acesso do arquivo (e somente do arquivo)
-ls = nao muda nada!
-cp
-   - se já existe: altera só a data de modificação do arquivo (mas NAO do diretório pai)
-   - se não existe: altera data de modificação e acesso do diretório pai (igual ao touch)
+
+cp e touch: modificados porém não testado.

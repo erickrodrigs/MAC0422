@@ -10,11 +10,6 @@ class DiskFile {
     FILE *disk;
     vector<int> FAT;
     vector<int> bitMap;
-
-  public:
-    void mount(string name);
-    void unmount();
-    bool isMounted();
     void openBITMAP();
     void openFAT();
     void saveBITMAP();
@@ -25,7 +20,12 @@ class DiskFile {
     bool findFile(string file, char type, int & parentSizePosition);
     bool findDirectory(vector<string> directories, int & parentSizePosition);
     vector<string> parse(string path);
-    void debug(); // lembrar de remover
+
+  public:
+    void mount(string name);
+    void unmount();
+    bool isMounted(); 
+    void debug();
 };
 
 #endif

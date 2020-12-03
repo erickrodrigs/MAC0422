@@ -8,10 +8,6 @@ class Disk : public DiskOperations {
     unsigned long long int directories;
     unsigned long long int freeSpace;
     unsigned long long int wastedSpace;
-    int getFreeSpace();
-    int getFiles();
-    int getWastedSpace();
-    int getDirectories();
     void fillInfo(int blockAddress, int total);
     void directoryWastedSpace(int numberOfFiles);
     void fileWastedSpace(int sizeOfFile);

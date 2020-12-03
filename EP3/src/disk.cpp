@@ -4,22 +4,6 @@ Disk::Disk() {
   disk = NULL;
 }
 
-int Disk::getFreeSpace() {
-  return freeSpace;
-}
-
-int Disk::getFiles() {
-  return files;
-}
-
-int Disk::getWastedSpace() {
-  return wastedSpace;
-}
-
-int Disk::getDirectories() {
-  return directories;
-}
-
 void Disk::fillInfo(int blockAddress, int total) {
   int numberOfFiles, sizeOfFile, positionBackup, currentBlock;
   char type[30];
@@ -86,8 +70,8 @@ void Disk::df() {
   fillInfo(ROOTBEGIN, 1);
   
   cout << "INFORMAÇÕES SOBRE O DISCO:\n\n";
-  cout << "Número de arquivos: " << getFiles() << endl;
-  cout << "Número de diretórios: " << getDirectories() << endl;
-  cout << "Espaço desperdiçado: " << getWastedSpace() << endl;
-  cout << "Espaço livre: " << getFreeSpace() << endl;
+  cout << "Número de arquivos: " << files << endl;
+  cout << "Número de diretórios: " << directories << endl;
+  cout << "Espaço desperdiçado: " << wastedSpace << endl;
+  cout << "Espaço livre: " << freeSpace << endl;
 }

@@ -50,6 +50,10 @@ void DiskOperations::mkdir(string path) { //um  ou dois blocos livres
       fscanf(disk, "%d", &numberOfFiles);
       fseek(disk, parentSizePosition, 0);
       fprintf(disk, "%9d", numberOfFiles + 1);
+
+      fseek(disk, ftell(disk) + 3, 0);
+      fprintf(disk, "%s", date);
+      fprintf(disk, "%s", date);
     }
     else cout << "Já existe um diretório com esse nome\n";
   }
@@ -57,14 +61,14 @@ void DiskOperations::mkdir(string path) { //um  ou dois blocos livres
     cout << "Digite um caminho válido!\n";
 }
 
-int DiskOperations::touch(string path) {//zero, um  ou dois blocos livres
+int DiskOperations::touch(string path, bool changeAccessDate) {//zero, um  ou dois blocos livres
   vector<string> directories;
   int blockAddress = 0;
   int sizeAddress = -1;
   int currentBlock;
   int parentSizePosition, numberOfFiles;
   time_t now;
-  char *date, cstring[50];
+  char *date;
 
   now = time(0);
   date = ctime(&now);
@@ -111,16 +115,21 @@ int DiskOperations::touch(string path) {//zero, um  ou dois blocos livres
       fscanf(disk, "%d", &numberOfFiles);
       fseek(disk, parentSizePosition, 0);
       fprintf(disk, "%9d", numberOfFiles + 1);
+
+      fseek(disk, ftell(disk) + 3, 0);
+      fprintf(disk, "%s", date);
+      fprintf(disk, "%s", date);
     }
     else {
-      fscanf(disk, "%s" , cstring);
-      sizeAddress = ftell(disk) + 1;
-      fscanf(disk, "%s", cstring);
-      fscanf(disk, "%s", cstring);
-      fprintf(disk, " ");
+      sizeAddress = ftell(disk) + 3;
+      fseek(disk, sizeAddress + 12, 0);
+
+      if (changeAccessDate) 
+        fprintf(disk, "%s", date);
+      else 
+        fseek(disk, ftell(disk) + 25, 0);
 
       fprintf(disk, "%s", date);
-
     }
   }
   else 
@@ -135,7 +144,7 @@ void DiskOperations::cp(string origin, string destiny) {
   char character;
   int fileSize = 0, write;
   int blockAddress;
-  int sizeAddress = touch(destiny);
+  int sizeAddress = touch(destiny, false);
 
   if (sizeAddress == -1) {
     cout << "Digite um caminho de destino válido!\n";
@@ -192,7 +201,7 @@ void DiskOperations::cat(string path) {
   int fileSize, numberOfBlocks, read;
   int parentSizePosition;
   time_t now;
-  char *date, cstring[50];
+  char *date;
 
   now = time(0);
   date = ctime(&now);
@@ -202,10 +211,9 @@ void DiskOperations::cat(string path) {
 
   if (directories.size() > 0 && findDirectory(directories, parentSizePosition)) {
     if (findFile(directories.back(), 'A', parentSizePosition)) {
-      fscanf(disk, "%s" , cstring);
+      fseek(disk, ftell(disk) + 3, 0);
       fscanf(disk, "%d", &fileSize);
-      fscanf(disk, "%s", cstring);
-      fprintf(disk, " ");
+      fseek(disk, ftell(disk) + 3, 0);
 
       fprintf(disk, "%s", date);
 
@@ -290,77 +298,6 @@ void DiskOperations::ls(string path) {
           fseek(disk, blockAddress + 1, 0);
         }
       }
-    }
-    else {
-      cout << "Arquivo não encontrado!\n";
-    }
-  }
-  else 
-    cout << "Digite um caminho válido!\n";
-}
-
-void DiskOperations::rm(string path) {
-  vector<string> directories;
-  int blockAddress = 0, currentBlock;
-  time_t now;
-  char *date, cstring[50];
-  char content[5000];
-  int removedFilePosition;
-  int endPosition = 3946;
-  int parentSizePosition, numberOfFiles;
-
-  now = time(0);
-  date = ctime(&now);
-  date[24] = ' ';
-
-  directories = parse(path);
-
-  if (directories.size() > 0 && findDirectory(directories, parentSizePosition)) {
-    if (findFile(directories.back(), 'A', parentSizePosition)) {
-      currentBlock = (ftell(disk) - BEGIN) / SIZEOFBLOCK;
-
-      removedFilePosition = ftell(disk) - 21;
-      fseek(disk, ftell(disk) + 89, 0);
-      fscanf(disk, "%d", &blockAddress);
-      freeBlocks(blockAddress);
-
-      fgets(content, SIZEOFBLOCK - (ftell(disk) - BEGIN) % SIZEOFBLOCK, disk);
-
-      fseek(disk, removedFilePosition, 0);
-
-      fputs(content, disk);
-
-      while (FAT[currentBlock] != -1) {
-        fseek(disk, FAT[currentBlock] * SIZEOFBLOCK + BEGIN + 2, 0);
-
-        fgets(content, 116, disk);
-
-        fseek(disk, currentBlock * SIZEOFBLOCK + BEGIN + endPosition, 0);
-        
-        fputs(content, disk);
-
-        fprintf(disk, " > ");
-
-        fseek(disk, currentBlock * SIZEOFBLOCK + BEGIN + 117, 0);
-        fscanf(disk, "%s", cstring);
-
-        // se nao tem mais outro elemento na pasta
-        if (cstring[0] == '>') {
-          bitMap[FAT[currentBlock]] = 1;
-          FAT[currentBlock] = -1;
-        }
-        else {
-          fseek(disk, FAT[currentBlock] * SIZEOFBLOCK + BEGIN + 117, 0);
-          fgets(content, SIZEOFBLOCK - (ftell(disk) - BEGIN) % SIZEOFBLOCK, disk);
-          fseek(disk, FAT[currentBlock] * SIZEOFBLOCK + BEGIN + 1, 0);
-          fputs(content, disk);
-          currentBlock = FAT[currentBlock];
-        }
-      }
-      fseek(disk, parentSizePosition, 0);
-      fscanf(disk, "%d", &numberOfFiles);
-      fseek(disk, parentSizePosition, 0);
-      fprintf(disk, "%9d", numberOfFiles - 1);
     }
     else {
       cout << "Arquivo não encontrado!\n";
@@ -456,15 +393,95 @@ void DiskOperations::searchFiles(string path, string fileName, int block, vector
 
 }
 
+void DiskOperations::rm(string path) {
+  vector<string> directories;
+  int blockAddress = 0, currentBlock;
+  time_t now;
+  char *date, cstring[50];
+  char content[5000];
+  int removedFilePosition;
+  int endPosition = 3946;
+  int parentSizePosition, numberOfFiles;
+
+  now = time(0);
+  date = ctime(&now);
+  date[24] = ' ';
+
+  directories = parse(path);
+
+  if (directories.size() > 0 && findDirectory(directories, parentSizePosition)) {
+    if (findFile(directories.back(), 'A', parentSizePosition)) {
+      currentBlock = (ftell(disk) - BEGIN) / SIZEOFBLOCK;
+
+      removedFilePosition = ftell(disk) - 21;
+      fseek(disk, ftell(disk) + 89, 0);
+      fscanf(disk, "%d", &blockAddress);
+      freeBlocks(blockAddress);
+
+      fgets(content, SIZEOFBLOCK - (ftell(disk) - BEGIN) % SIZEOFBLOCK, disk);
+
+      fseek(disk, removedFilePosition, 0);
+
+      fputs(content, disk);
+
+      while (FAT[currentBlock] != -1) {
+        fseek(disk, FAT[currentBlock] * SIZEOFBLOCK + BEGIN + 2, 0);
+
+        fgets(content, 116, disk);
+
+        fseek(disk, currentBlock * SIZEOFBLOCK + BEGIN + endPosition, 0);
+        
+        fputs(content, disk);
+
+        fprintf(disk, " > ");
+
+        fseek(disk, currentBlock * SIZEOFBLOCK + BEGIN + 117, 0);
+        fscanf(disk, "%s", cstring);
+
+        // se nao tem mais outro elemento na pasta
+        if (cstring[0] == '>') {
+          bitMap[FAT[currentBlock]] = 1;
+          FAT[currentBlock] = -1;
+        }
+        else {
+          fseek(disk, FAT[currentBlock] * SIZEOFBLOCK + BEGIN + 117, 0);
+          fgets(content, SIZEOFBLOCK - (ftell(disk) - BEGIN) % SIZEOFBLOCK, disk);
+          fseek(disk, FAT[currentBlock] * SIZEOFBLOCK + BEGIN + 1, 0);
+          fputs(content, disk);
+          currentBlock = FAT[currentBlock];
+        }
+      }
+      fseek(disk, parentSizePosition, 0);
+      fscanf(disk, "%d", &numberOfFiles);
+      fseek(disk, parentSizePosition, 0);
+      fprintf(disk, "%9d", numberOfFiles - 1);
+
+      fseek(disk, ftell(disk) + 3, 0);
+      fprintf(disk, "%s", date);
+      fprintf(disk, "%s", date);
+    }
+    else {
+      cout << "Arquivo não encontrado!\n";
+    }
+  }
+  else 
+    cout << "Digite um caminho válido!\n";
+}
+
 void DiskOperations::rmdir(string path) {
   vector<string> directories, eliminated;
   vector<int> blocks;
   int blockAddress = 0, currentBlock;
+  time_t now;
   int removedFilePosition = 0;
   int endPosition = 3946;
   int parentSizePosition, numberOfFiles;
-  char cstring[50];
+  char *date, cstring[50];
   char content[5000];
+
+  now = time(0);
+  date = ctime(&now);
+  date[24] = ' ';
 
   directories = parse(path);
 
@@ -523,6 +540,10 @@ void DiskOperations::rmdir(string path) {
       fscanf(disk, "%d", &numberOfFiles);
       fseek(disk, parentSizePosition, 0);
       fprintf(disk, "%9d", numberOfFiles - 1);
+
+      fseek(disk, ftell(disk) + 3, 0);
+      fprintf(disk, "%s", date);
+      fprintf(disk, "%s", date);
     }
     else {
       cout << "Diretório não encontrado!\n";
