@@ -13,7 +13,7 @@ void DiskOperations::mkdir(string path) { //um  ou dois blocos livres
     if (!findFile(directories.back(), 'D', parentSizePosition)) {
       fseek(disk, ftell(disk) - 1, 0);
 
-      if ((ftell(disk) - BEGIN)%SIZEOFBLOCK + 1 + 119 > SIZEOFBLOCK) {
+      if ((ftell(disk) - BEGIN) % SIZEOFBLOCK == 3946) {
         blockAddress = ftell(disk);
         currentBlock = (blockAddress - BEGIN)/SIZEOFBLOCK;
         FAT[currentBlock] = searchFreeBlock(); //depois fazer tratamento do erro
@@ -80,7 +80,7 @@ int DiskOperations::touch(string path, bool changeAccessDate) {//zero, um  ou do
     if (!findFile(directories.back(), 'A', parentSizePosition)) {
       fseek(disk, ftell(disk) - 1, 0);
 
-      if ((ftell(disk) - BEGIN) % SIZEOFBLOCK + 1 + 119 > SIZEOFBLOCK) {
+      if ((ftell(disk) - BEGIN) % SIZEOFBLOCK == 3946) {
         blockAddress = ftell(disk);
         currentBlock = (blockAddress - BEGIN)/SIZEOFBLOCK;
         FAT[currentBlock] = searchFreeBlock(); //depois fazer tratamento do erro
