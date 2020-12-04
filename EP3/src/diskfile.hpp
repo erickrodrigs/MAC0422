@@ -16,6 +16,7 @@ class DiskFile {
     void saveFAT();
     void createFileSystem(string path);
     int searchFreeBlock();
+    vector<int> searchFreeBlocks(int numberOfBlocks);
     void freeBlocks(int currentBlock);
     bool findFile(string file, char type, int & parentSizePosition);
     bool findDirectory(vector<string> directories, int & parentSizePosition);

@@ -99,6 +99,18 @@ int DiskFile::searchFreeBlock() {
   return i == BLOCKS ? -1 : i;  
 }
 
+vector<int> DiskFile::searchFreeBlocks(int numberOfBlocks) {
+  vector<int> blocks;
+  
+  for (int i = 0; numberOfBlocks != 0 && i < (int) bitMap.size(); i++) {
+    if (bitMap[i]) {
+      blocks.push_back(i);
+      numberOfBlocks--;
+    }
+  }
+  return blocks;
+}
+
 void DiskFile::freeBlocks(int currentBlock) {
   int aux;
 

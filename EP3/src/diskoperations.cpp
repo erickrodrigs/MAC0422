@@ -12,10 +12,10 @@ void DiskOperations::mkdir(string path) {
 
   newBlock = searchFreeBlock();
   if (newBlock == -1) {
-    cout << "não foi possível alocar espaço para esta pasta\n";
-    bitMap[newBlock] = 0;
+    cout << "não foi possível alocar espaço para esta pasta\n"; 
     return;  
   }
+  bitMap[newBlock] = 0;
     
   if (directories.size() > 0 && findDirectory(directories, parentSizePosition)) {
     if (!findFile(directories.back(), 'D', parentSizePosition)) {
@@ -87,10 +87,10 @@ int DiskOperations::touch(string path, bool changeAccessDate) {//zero, um  ou do
 
   newBlock = searchFreeBlock();
   if (newBlock == -1) {
-    cout << "não foi possível alocar espaço para este arquivo\n";
-    bitMap[newBlock] = 0;
+    cout << "não foi possível alocar espaço para este arquivo\n";   
     return -2;  
   }
+  bitMap[newBlock] = 0;
 
   directories = parse(path);
 
@@ -106,7 +106,7 @@ int DiskOperations::touch(string path, bool changeAccessDate) {//zero, um  ou do
         if (currentBlock == -1) {
           cout << "Não foi possível alocar espaço para os metadados da pasta\n";
           bitMap[newBlock] = 1;
-          return;
+          return -1;
         }
         bitMap[currentBlock] = 0;
         blockAddress = currentBlock*SIZEOFBLOCK + BEGIN;
@@ -159,37 +159,52 @@ int DiskOperations::touch(string path, bool changeAccessDate) {//zero, um  ou do
 }
 
 void DiskOperations::cp(string origin, string destiny) {
-  // Abrir arquivo, copiar tudo de dentro dele
   FILE *originFile;
+  vector<int> blocks;
   char character;
-  int fileSize = 0, write;
+  int fileSize = 0, write, numberOfBlocks, blocksIndex = 0;
   int blockAddress;
   int sizeAddress = touch(destiny, false);
 
-  if (sizeAddress == -1) {
-    cout << "Digite um caminho de destino válido!\n";
+  if (sizeAddress < 0)
     return;
-  }
 
   originFile = fopen(origin.c_str(), "r");
 
+  fseek(originFile, 0, SEEK_END);
+  fileSize = ftell(originFile);
+  fseek(originFile, 0, SEEK_SET);
+
+  numberOfBlocks = (fileSize + 4) / SIZEOFBLOCK + ((fileSize + 4) % SIZEOFBLOCK == 0 ? 0 : 1) - 1;
+  
   fseek(disk, sizeAddress + 86, 0);
   fscanf(disk, "%d", &blockAddress);
   freeBlocks(FAT[blockAddress]);
   FAT[blockAddress] = -1;
+
+  blocks = searchFreeBlocks(numberOfBlocks);
+
+  if ((int) blocks.size()  != numberOfBlocks) {
+    cout << "Não foi possível alocar mais espaço para a cópia deste arquivo\n";
+    rm(destiny);
+    cout << "O arquivo temporário para a cópia foi removido\n";
+    return;
+  }
+
   fseek(disk, blockAddress * SIZEOFBLOCK + BEGIN + 2, 0);
 
   write = SIZEOFBLOCK - 2;
   while ((character = getc(originFile)) != EOF) {
     if (write == 0) {
-      FAT[blockAddress] = searchFreeBlock();
+      FAT[blockAddress] = blocks[blocksIndex];
+      blocksIndex++;
       blockAddress = FAT[blockAddress];
       bitMap[blockAddress] = 0;
       write = SIZEOFBLOCK;
+      fseek(disk, blockAddress * SIZEOFBLOCK + BEGIN, 0);
     }
 
     fprintf(disk, "%c", character);
-    fileSize++;
     write--;
   }
 
@@ -197,15 +212,19 @@ void DiskOperations::cp(string origin, string destiny) {
     fprintf(disk, "> ");
   else if (write == 1) {
     fprintf(disk, ">");
-    FAT[blockAddress] = searchFreeBlock();
+    FAT[blockAddress] = blocks[blocksIndex];
+    blocksIndex++;
     blockAddress = FAT[blockAddress];
     bitMap[blockAddress] = 0;
+    fseek(disk, blockAddress * SIZEOFBLOCK + BEGIN, 0);
     fprintf(disk, " ");
   }
   else {
-    FAT[blockAddress] = searchFreeBlock();
+    FAT[blockAddress] = blocks[blocksIndex];
+    blocksIndex++;
     blockAddress = FAT[blockAddress];
     bitMap[blockAddress] = 0;
+    fseek(disk, blockAddress * SIZEOFBLOCK + BEGIN, 0);
     fprintf(disk, "> ");
   }
 
