@@ -1,13 +1,21 @@
 #include "diskoperations.hpp"
 
-void DiskOperations::mkdir(string path) { //um  ou dois blocos livres
+void DiskOperations::mkdir(string path) {
   vector<string> directories;
   int blockAddress = 0, currentBlock;
+  int newBlock;
   int parentSizePosition, numberOfFiles;
   time_t now;
   char *date;
 
   directories = parse(path);
+
+  newBlock = searchFreeBlock();
+  if (newBlock == -1) {
+    cout << "não foi possível alocar espaço para esta pasta\n";
+    bitMap[newBlock] = 0;
+    return;  
+  }
     
   if (directories.size() > 0 && findDirectory(directories, parentSizePosition)) {
     if (!findFile(directories.back(), 'D', parentSizePosition)) {
@@ -16,8 +24,15 @@ void DiskOperations::mkdir(string path) { //um  ou dois blocos livres
       if ((ftell(disk) - BEGIN) % SIZEOFBLOCK == 3946) {
         blockAddress = ftell(disk);
         currentBlock = (blockAddress - BEGIN)/SIZEOFBLOCK;
-        FAT[currentBlock] = searchFreeBlock(); //depois fazer tratamento do erro
+        FAT[currentBlock] = searchFreeBlock();
         currentBlock = FAT[currentBlock];
+
+        if (currentBlock == -1) {
+          cout << "Não foi possível alocar espaço para os metadados da pasta\n";
+          bitMap[newBlock] = 1;
+          return;
+        }
+
         bitMap[currentBlock] = 0;
         blockAddress = currentBlock*SIZEOFBLOCK + BEGIN;
         fseek(disk, blockAddress, 0);
@@ -35,15 +50,12 @@ void DiskOperations::mkdir(string path) { //um  ou dois blocos livres
         fprintf(disk, "%s", date);
 
       
-      blockAddress = searchFreeBlock();
-      if (blockAddress > 0) {
-        bitMap[blockAddress] = 0;
-        fprintf(disk, "%5d > ", blockAddress);
+      blockAddress = newBlock;
+      fprintf(disk, "%5d > ", blockAddress);
 
-        fseek(disk, blockAddress*SIZEOFBLOCK + BEGIN, 0);
-      
-        fprintf(disk, "< > ");
-      }
+      fseek(disk, blockAddress*SIZEOFBLOCK + BEGIN, 0);
+    
+      fprintf(disk, "< > ");
       
       fseek(disk, parentSizePosition, 0);
       fscanf(disk, "%d", &numberOfFiles);
@@ -64,7 +76,7 @@ int DiskOperations::touch(string path, bool changeAccessDate) {//zero, um  ou do
   vector<string> directories;
   int blockAddress = 0;
   int sizeAddress = -1;
-  int currentBlock;
+  int currentBlock, newBlock;
   int parentSizePosition, numberOfFiles;
   time_t now;
   char *date;
@@ -72,6 +84,13 @@ int DiskOperations::touch(string path, bool changeAccessDate) {//zero, um  ou do
   now = time(0);
   date = ctime(&now);
   date[24] = ' ';
+
+  newBlock = searchFreeBlock();
+  if (newBlock == -1) {
+    cout << "não foi possível alocar espaço para este arquivo\n";
+    bitMap[newBlock] = 0;
+    return -2;  
+  }
 
   directories = parse(path);
 
@@ -82,8 +101,13 @@ int DiskOperations::touch(string path, bool changeAccessDate) {//zero, um  ou do
       if ((ftell(disk) - BEGIN) % SIZEOFBLOCK == 3946) {
         blockAddress = ftell(disk);
         currentBlock = (blockAddress - BEGIN)/SIZEOFBLOCK;
-        FAT[currentBlock] = searchFreeBlock(); //depois fazer tratamento do erro
+        FAT[currentBlock] = searchFreeBlock();
         currentBlock = FAT[currentBlock];
+        if (currentBlock == -1) {
+          cout << "Não foi possível alocar espaço para os metadados da pasta\n";
+          bitMap[newBlock] = 1;
+          return;
+        }
         bitMap[currentBlock] = 0;
         blockAddress = currentBlock*SIZEOFBLOCK + BEGIN;
         fseek(disk, blockAddress, 0);
@@ -99,15 +123,13 @@ int DiskOperations::touch(string path, bool changeAccessDate) {//zero, um  ou do
         fprintf(disk, "%s", date);
 
       
-      blockAddress = searchFreeBlock();
-      if (blockAddress > 0) {
-        bitMap[blockAddress] = 0;
-        fprintf(disk, "%5d > ", blockAddress);
+      blockAddress = newBlock;
+      fprintf(disk, "%5d > ", blockAddress);
 
-        fseek(disk, blockAddress*SIZEOFBLOCK + BEGIN, 0);
+      fseek(disk, blockAddress*SIZEOFBLOCK + BEGIN, 0);
+    
+      fprintf(disk, "< > ");
       
-        fprintf(disk, "< > ");
-      }
 
       fseek(disk, parentSizePosition, 0);
       fscanf(disk, "%d", &numberOfFiles);
