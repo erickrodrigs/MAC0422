@@ -16,3 +16,4 @@ saida*.txt
 output*.txt
 *.txt
 !tests/**/*.txt
+!lorem.txt
