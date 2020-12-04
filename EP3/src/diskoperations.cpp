@@ -23,7 +23,6 @@ void DiskOperations::mkdir(string path) { //um  ou dois blocos livres
         fseek(disk, blockAddress, 0);
         fprintf(disk, "< ");
       }
-      cout << directories.back();
       fprintf(disk, "%14s%s", directories.back().c_str(), " | ");
       fprintf(disk, "%s", "DIR | ");
       fprintf(disk, "%9d | ", 0);
@@ -91,7 +90,6 @@ int DiskOperations::touch(string path, bool changeAccessDate) {//zero, um  ou do
         fprintf(disk, "< ");
       }
 
-      cout << directories.back();
       fprintf(disk, "%14s%s", directories.back().c_str(), " | ");
       fprintf(disk, "%s", "ARQ | ");
       sizeAddress = ftell(disk);
