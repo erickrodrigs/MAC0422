@@ -439,7 +439,7 @@ void DiskOperations::rm(string path) {
   char *date, cstring[50];
   char content[5000];
   int removedFilePosition;
-  int endPosition = 3946;
+  int endPosition = 3830;
   int parentSizePosition, numberOfFiles;
 
   now = time(0);
@@ -513,7 +513,7 @@ void DiskOperations::rmdir(string path) {
   int blockAddress = 0, currentBlock;
   time_t now;
   int removedFilePosition = 0;
-  int endPosition = 3946;
+  int endPosition = 3830;
   int parentSizePosition, numberOfFiles;
   char *date, cstring[50];
   char content[5000];
