@@ -526,6 +526,8 @@ void DiskOperations::rmdir(string path) {
 
   if (directories.size() > 0 && findDirectory(directories, parentSizePosition)) {
     if (findFile(directories.back(), 'D', parentSizePosition)) {
+      currentBlock = (ftell(disk) - BEGIN) / SIZEOFBLOCK;
+      
       removedFilePosition = ftell(disk) - 21;
       fseek(disk, ftell(disk) + 89, 0);
       fscanf(disk, "%d", &blockAddress);
